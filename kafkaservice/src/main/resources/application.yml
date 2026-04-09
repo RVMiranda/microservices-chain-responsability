@@ -1,0 +1,49 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: kafkaservice
+
+  datasource:
+    url: jdbc:postgresql://postgres_retry_service:5432/postgres
+    username: postgres
+    password: mysecretpassword
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  kafka:
+    consumer:
+      # Assume kafka orchestrator is at the same docker network as the other services
+      bootstrap-servers: kafka:29092
+      group-id: product-events-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: org.rvmiranda.kafkaservice.domain.model.ProductEvent
+
+  # Configuracion agregada para satisfacer las clases previas de prueba (ProductProducer)
+kafka:
+  topic:
+    productos: product-events
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eurekaserver:8761/eureka/
+
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: INFO

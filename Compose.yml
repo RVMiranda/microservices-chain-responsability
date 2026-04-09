@@ -1,0 +1,194 @@
+services:
+  # ==========================================
+  # 1. INFRAESTRUCTURA (Bases de datos y Nube)
+  # ==========================================
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb_local
+    ports:
+      - "27017:27017"
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+
+  localstack:
+    image: localstack/localstack
+    container_name: localstack_main
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=logs
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=us-east-1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  postgres_retry_service:
+    image: postgres:15-alpine
+    container_name: postgres_retry_service
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=db_retry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.4
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.4
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+
+  # ==========================================
+  # 2. EL DIRECTORIO (Eureka)
+  # ==========================================
+  eurekaserver:
+    build:
+      context: ./eurekaserver
+      dockerfile: Dockerfile
+    container_name: eurekaserver
+    ports:
+      - "8761:8761"
+
+  # ==========================================
+  # 3. TUS MICROSERVICIOS DE NEGOCIO
+  # ==========================================
+  productservice:
+    build:
+      context: ./productservice
+      dockerfile: Dockerfile
+    container_name: productservice
+    environment:
+      # Pisamos el localhost para que busque a Eureka y Mongo por su nombre de contenedor
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8761/eureka/
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb_local:27017/escuela_db
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_EC2_METADATA_DISABLED=true
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - eurekaserver
+      - mongodb
+      - localstack
+
+  ordenservice:
+    build:
+      context: ./ordenservice
+      dockerfile: Dockerfile
+    container_name: ordenservice
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8761/eureka/
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb_local:27017/escuela_db
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_EC2_METADATA_DISABLED=true
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    depends_on:
+      - eurekaserver
+      - mongodb
+      - localstack
+
+  pagoservice:
+    build:
+      context: ./pagoservice
+      dockerfile: Dockerfile
+    container_name: pagoservice
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8761/eureka/
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb_local:27017/escuela_db
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_EC2_METADATA_DISABLED=true
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    depends_on:
+      - eurekaserver
+      - mongodb
+      - localstack
+
+  kafkaservice:
+    build:
+      context: ./kafkaservice
+      dockerfile: Dockerfile
+    container_name: kafkaservice
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8761/eureka/
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_EC2_METADATA_DISABLED=true
+      - AWS_ENDPOINT_URL=http://localstack_main:4566
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_retry_service:5432/db_retry
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=mysecretpassword
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - eurekaserver
+      - postgres_retry_service
+      - kafka
+      - localstack
+
+  # ==========================================
+  # 4. EL PORTERO (API Gateway)
+  # ==========================================
+  apigateway:
+    build:
+      context: ./apigateway
+      dockerfile: Dockerfile
+    container_name: apigateway
+    ports:
+      - "8089:8089" # El puerto oficial que usaste para esquivar a Kafka
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8761/eureka/
+    depends_on:
+      - eurekaserver
+      - productservice
+      - ordenservice
+      - pagoservice
+
+volumes:
+  postgres_data:

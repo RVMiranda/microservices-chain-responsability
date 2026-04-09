@@ -1,0 +1,22 @@
+# Archivos del Sistema Operativo (Mac)
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Entornos de Desarrollo / IDEs
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# Archivos de la base de datos (Si levantas volúmenes de postgres localmente)
+/data/
+/postgres-data/
+/pgdata/
+
+# Logs generales
+*.log
+
+# Variables de entorno o secretos (¡Muy importante!)
+.env
+.env.local

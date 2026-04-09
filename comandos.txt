@@ -1,0 +1,63 @@
+LOCALSTACK + CLOUDWATCH LOGS (MICROSERVICIOS)
+
+0) Levantar stack
+docker compose -f Compose.yml up -d --build
+
+1) Verificar contenedores activos
+docker compose -f Compose.yml ps
+
+2) Ver todos los log groups
+docker exec -it localstack_main awslocal logs describe-log-groups
+
+3) Crear log groups (si no existen)
+docker exec -it localstack_main awslocal logs create-log-group --log-group-name ordenservice-log-group
+docker exec -it localstack_main awslocal logs create-log-group --log-group-name productservice-log-group
+docker exec -it localstack_main awslocal logs create-log-group --log-group-name pagoservice-log-group
+
+4) Ver streams por servicio
+docker exec -it localstack_main awslocal logs describe-log-streams --log-group-name ordenservice-log-group
+docker exec -it localstack_main awslocal logs describe-log-streams --log-group-name productservice-log-group
+docker exec -it localstack_main awslocal logs describe-log-streams --log-group-name pagoservice-log-group
+
+5) Ver eventos (logs) por servicio
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name ordenservice-log-group
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name productservice-log-group
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name pagoservice-log-group
+
+6) Ver solo los ultimos N eventos
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name ordenservice-log-group --limit 20
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name productservice-log-group --limit 20
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name pagoservice-log-group --limit 20
+
+7) Buscar por texto dentro de los logs
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name ordenservice-log-group --filter-pattern "ERROR"
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name productservice-log-group --filter-pattern "ERROR"
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name pagoservice-log-group --filter-pattern "ERROR"
+
+8) Ver eventos desde un timestamp (epoch en milisegundos)
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name ordenservice-log-group --start-time 1773270000000
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name productservice-log-group --start-time 1773270000000
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name pagoservice-log-group --start-time 1773270000000
+
+9) Obtener cantidad de streams y eventos (quick check)
+docker exec -it localstack_main awslocal logs describe-log-streams --log-group-name ordenservice-log-group --query 'length(logStreams)'
+docker exec -it localstack_main awslocal logs filter-log-events --log-group-name ordenservice-log-group --query 'length(events)'
+
+10) Borrar log group (reset rapido)
+docker exec -it localstack_main awslocal logs delete-log-group --log-group-name ordenservice-log-group
+docker exec -it localstack_main awslocal logs delete-log-group --log-group-name productservice-log-group
+docker exec -it localstack_main awslocal logs delete-log-group --log-group-name pagoservice-log-group
+
+11) Ver logs del contenedor (diagnostico cuando no aparecen eventos)
+docker logs --tail 200 ordenservice
+docker logs --tail 200 productservice
+docker logs --tail 200 pagoservice
+docker logs --tail 200 localstack_main
+
+12) Validar variables AWS dentro de cada microservicio
+docker exec -it ordenservice env | grep '^AWS_'
+docker exec -it productservice env | grep '^AWS_'
+docker exec -it pagoservice env | grep '^AWS_'
+
+NOTA IMPORTANTE:
+Usar endpoint con hostname Docker valido sin guion bajo: http://localstack:4566

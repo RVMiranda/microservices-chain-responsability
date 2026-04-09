@@ -1,0 +1,39 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: productservice
+  data:
+    mongodb:
+      # Usamos el nombre del contenedor de la base de datos, no localhost
+      uri: mongodb://mongodb_local:27017/escuela_db
+
+  # --- LA MAGIA DE LOCALSTACK ---
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      region:
+        static: ${AWS_REGION:us-east-1}
+      # Usamos el nombre del contenedor de LocalStack
+      endpoint: ${AWS_ENDPOINT_URL:http://localstack:4566}
+  # ------------------------------
+
+  kafka:
+    producer:
+      bootstrap-servers: kafka:29092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.aws: DEBUG
+
+eureka:
+  client:
+    service-url:
+      # Usamos el nombre del contenedor de Eureka
+      defaultZone: http://eurekaserver:8761/eureka/
