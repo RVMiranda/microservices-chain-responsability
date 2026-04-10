@@ -1,0 +1,33 @@
+# Indicarle a Git que controle automáticamente los saltos de línea
+# Esto asegura que convierta CRLF (Windows) a LF (Mac/Linux) al hacer commit
+# y al hacer checkout, devuelva el formato nativo del sistema operativo donde se descargue.
+* text=auto
+
+# Forzar explícitamente manejo como texto y conversiones a LF/CRLF automáticos 
+# para extensiones de archivos de código y configuración
+*.java text
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+*.md text
+*.txt text
+*.sql text
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+.gitignore text
+Dockerfile text eol=lf
+
+# Marcar ciertos archivos binarios explícitamente 
+# para que Git no intente alterar sus saltos de línea y corromperlos
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.class binary
+*.zip binary
+*.tar.gz binary
