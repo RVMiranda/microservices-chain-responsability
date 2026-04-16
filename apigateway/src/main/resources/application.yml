@@ -6,23 +6,21 @@ spring:
     name: apigateway
   cloud:
     gateway:
-      server:
-        webflux:
-          routes:
-            - id: product-route
-              uri: lb://productservice
-              predicates:
-                - Path=/productos/**
+      routes:
+        - id: product-route
+          uri: lb://productservice
+          predicates:
+            - Path=/productos/**
 
-            - id: ordenes-route
-              uri: lb://ordenservice
-              predicates:
-                - Path=/ordenes/**
+        - id: ordenes-route
+          uri: lb://ordenservice
+          predicates:
+            - Path=/ordenes/**
 
-            - id: pagos-route
-              uri: lb://pagoservice
-              predicates:
-                - Path=/pagos/**
+        - id: pagos-route
+          uri: lb://pagoservice
+          predicates:
+            - Path=/pagos/**
 
 eureka:
   client:

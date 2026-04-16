@@ -55,15 +55,18 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, ProductDto> consumerFactory() {
         ObjectMapper mapper = new ObjectMapper();
-        JsonDeserializer<ProductDto> deserializer = new JsonDeserializer<>(ProductDto.class, mapper);
-        deserializer.setUseTypeHeaders(false);
+        JsonDeserializer<ProductDto> jsonDeserializer = new JsonDeserializer<>(ProductDto.class, mapper);
+        jsonDeserializer.setUseTypeHeaders(false);
+        
+        org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<ProductDto> errorHandlingDeserializer = 
+            new org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<>(jsonDeserializer);
 
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), errorHandlingDeserializer);
     }
 
     @Bean

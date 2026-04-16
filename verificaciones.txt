@@ -1,0 +1,69 @@
+============================================================
+GUÍA DE VERIFICACIÓN: KAFKA RETRY SYSTEM Y POSTGRESQL
+============================================================
+
+Esta guía detalla los comandos y pasos manuales para comprobar la correcta disponibilidad de la base de datos de PostgreSQL (gestión de reintentos) y cómo validar todo el ciclo de fallo y reintento en Kafka.
+
+------------------------------------------------------------
+1. CÓMO VERIFICAR LA BASE DE DATOS POSTGRES
+------------------------------------------------------------
+
+La base de datos relacional vive en el contenedor "postgres_retry_service". Aquí se gestionan las tablas del Patrón Chain of Responsibility junto al scheduler de reintentos (@Scheduled). 
+
+📋 A. Acceder a la terminal de PostgreSQL:
+Puedes entrar directamente a la consola SQL nativa ejecutando:
+    docker exec -it postgres_retry_service psql -U postgres -d db_retry
+
+📋 B. Verificar si las tablas fueron creadas:
+Una vez dentro del psql, escribe el siguiente comando para listar las tablas (Hibernate debería haberlas creado automáticamente usando las entidades @Table):
+    \dt
+
+Deberías ver listadas las siguientes tres tablas:
+  - orders_retry_jobs
+  - payments_retry_jobs
+  - products_retry_jobs
+
+📋 C. Ver los datos registrados en el historial de fallos:
+Si quieres inspeccionar qué jobs o payloads han fallado en Kafka, simplemente lanza consultas SELECT:
+    SELECT * FROM orders_retry_jobs;
+    SELECT * FROM products_retry_jobs;
+    SELECT * FROM payments_retry_jobs;
+
+Para salir de la terminal psql, escribe:
+    \q
+
+
+------------------------------------------------------------
+2. PASO A PASO: PROBAR EL FLUJO DE RETRY (CHAIN OF RESP.)
+------------------------------------------------------------
+
+El flujo diseñado en este microservicio busca que si el procesamiento principal que escucha Kafka falla, el evento NO se pierda, sino que caiga a la base de datos "db_retry" para que el manejador lo intente revivir más adelante.
+
+✅ PASO 1: Ingresa a la interfaz de Kafka UI
+    Abre tu navegador en http://localhost:8080 (Esta es la interfaz de Kafka-UI que levanta el Compose).
+
+✅ PASO 2: Inyecta un mensaje (Simula un evento normal de producto u orden)
+    1. Ve al apartado "Topics".
+    2. Entra al tópico principal, por ejemplo "products" u "orders" (el que escuche el Kafkaservice).
+    3. Arriba a la derecha, haz clic en "Produce Message".
+    4. Envía un JSON válido que tu Listener espere recibir de forma natural (por ejemplo un objeto con el ID del producto u orden).
+    5. Observa en los logs del microservicio cómo KafkaService lo procesa y notifica por CloudWatch en Localstack exitosamente.
+
+❌ PASO 3: Forza intencionalmente un Fallo (Para probar el Retry)
+    Para que se dispare el Retry Handler, requieres inyectarle a Kafka un JSON corrupto, vacío, o que rompa las reglas de negocio en el procesamiento del listener.
+    1. Dirígete a Kafka-UI de nuevo y pulsa "Produce Message".
+    2. Envía un JSON malformado (faltando el ID o un campo vital que provoque una excepción como NullPointerException o RuntimeException en el @KafkaListener).
+    3. Verifica en consola usando `docker logs kafkaservice` que saltó un error ("Error procesando mensaje...").
+
+🕵🏻 PASO 4: Verifica que el Retry Interceptó el Error
+    Debido a la excepción anterior, el código delegó el objeto al "RetryHandler" de la Cadena de Responsabilidad.
+    1. Entra a la base de datos PostgreSQL:
+       docker exec -it postgres_retry_service psql -U postgres -d db_retry
+    2. Haz un SELECT de la tabla correspondiente:
+       SELECT id, status, payload FROM products_retry_jobs;
+    3. ¡Deberías ver una nueva fila insertada con el "payload" original almacenado y con el Status en "PENDING" o "FAILED"! Todo funciona de maravilla, no se perdió la data.
+
+🔁 PASO 5: Comprobar que el @Scheduled intenta revivirlo
+    Tu sistema tiene programada una tarea (Scheduler) que despierta cada cierto tiempo para ir a esta tabla de Postgres, leer los estados PENDING, e intentar procesarlos.
+    1. Deja abierta la consola de logs: `docker logs -f kafkaservice`
+    2. Cada X minutos o segundos (dependiendo del cron en tu @Scheduled), verás que el propio servicio se auto-encarga de sacar los renglones fallidos de la base de datos e intenta mandarlos a la API externa o guardarlos vía el "ApiCallHandler", completando el ciclo del Patrón Chain of Responsibility.

@@ -1,14 +1,16 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+# syntax=docker/dockerfile:1
+# Etapa 1: compilar
+FROM maven:3.9-eclipse-temurin-21-jammy AS build
 WORKDIR /app
 
 COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+
+RUN --network=host mvn dependency:go-offline -B
 
 COPY src src
-RUN ./mvnw clean package -DskipTests
+RUN --network=host mvn clean package -DskipTests
 
+# Etapa 2: imagen final
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
