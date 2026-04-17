@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "pay-003-gghhii",
+    "orderId": "ord-002-ddeeff",
+    "paymentMethod": "CREDIT_CARD",
+    "amount": 2599.98,
+    "status": "FAILED"
+  },
+  "sendEmail": {
+    "status": "PENDING",
+    "message": "Email pendiente de envío"
+  },
+  "updateRetryJobs": {
+    "status": "PENDING",
+    "message": "Actualización pendiente"
+  }
+}

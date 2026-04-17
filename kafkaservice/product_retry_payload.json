@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "prod-001-aabbcc",
+    "name": "Laptop ProMax",
+    "description": "Laptop de alta gama para desarrollo",
+    "price": 1299.99,
+    "stock": 15
+  },
+  "sendEmail": {
+    "status": "PENDING",
+    "message": "Email pendiente de envío"
+  },
+  "updateRetryJobs": {
+    "status": "PENDING",
+    "message": "Actualización pendiente"
+  }
+}

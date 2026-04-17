@@ -23,7 +23,7 @@ public class RetryKafkaListener {
     private final ProductRetryJobRepository productRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "payments_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}")
+    @KafkaListener(topics = "payments_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}", containerFactory = "retryKafkaListenerContainerFactory")
     public void listenPaymentsRetryJobs(String payload) {
         log.info("Received Payment Retry Job Payload: {}", payload);
         try {
@@ -45,7 +45,7 @@ public class RetryKafkaListener {
         }
     }
 
-    @KafkaListener(topics = "order_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}")
+    @KafkaListener(topics = "order_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}", containerFactory = "retryKafkaListenerContainerFactory")
     public void listenOrderRetryJobs(String payload) {
         log.info("Received Order Retry Job Payload: {}", payload);
         try {
@@ -67,7 +67,7 @@ public class RetryKafkaListener {
         }
     }
 
-    @KafkaListener(topics = "product_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}")
+    @KafkaListener(topics = "product_retry_jobs", groupId = "${spring.kafka.consumer.group-id:retry-group}", containerFactory = "retryKafkaListenerContainerFactory")
     public void listenProductRetryJobs(String payload) {
         log.info("Received Product Retry Job Payload: {}", payload);
         try {

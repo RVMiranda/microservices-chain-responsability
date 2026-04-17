@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "ord-002-ddeeff",
+    "productId": "prod-001-aabbcc",
+    "quantity": 2,
+    "userEmail": "cliente@ejemplo.com",
+    "status": "FAILED"
+  },
+  "sendEmail": {
+    "status": "PENDING",
+    "message": "Email pendiente de envío"
+  },
+  "updateRetryJobs": {
+    "status": "PENDING",
+    "message": "Actualización pendiente"
+  }
+}
