@@ -21,15 +21,36 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<GenericResponse<Product>> createProduct(@RequestBody ProductRequest request) {
-        Product newProduct = Product.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .price(request.getPrice())
-                .stock(request.getStock())
-                .build();
+        try {
+            Product newProduct = Product.builder()
+                    .name(request.getName())
+                    .description(request.getDescription())
+                    .price(request.getPrice())
+                    .stock(request.getStock())
+                    .build();
 
-        Product created = productService.createProduct(newProduct);
-        return ResponseEntity.ok(GenericResponse.success(created, "Producto creado exitosamente"));
+            Product created = productService.createProduct(newProduct);
+            return ResponseEntity.ok(GenericResponse.success(created, "Producto creado exitosamente"));
+        } catch (Exception e) {
+            String requestDataJson = String.format("{\"name\":\"%s\", \"description\":\"%s\", \"price\":%s, \"stock\":%s}",
+                    request.getName(), request.getDescription(), request.getPrice(), request.getStock());
+
+            var failedEvent = new FailedProductEvent(
+                    UUID.randomUUID().toString(),
+                    "unknown-product-id",
+                    "CREATE",
+                    "FAILED",
+                    requestDataJson,
+                    null,
+                    e.getMessage()
+            );
+
+            kafkaTemplate.send("product-events", failedEvent);
+
+            return ResponseEntity.badRequest().body(
+                    GenericResponse.error("Error al crear el producto, evento de reintento enviado a Kafka: " + e.getMessage())
+            );
+        }
     }
 
     @GetMapping

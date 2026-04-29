@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -27,11 +29,13 @@ public class RetryJobEntity {
     @Column(name = "product_id", nullable = false)
     private String productId;
 
-    // We can map jsonb to String for simplicity, though mapped native types require extra configuration or map as String and let Postgres cast it
-    @Column(name = "request_data", columnDefinition = "jsonb")
+    // Mapped with @JdbcTypeCode so Hibernate sends the value as a proper jsonb PGobject
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "request_data")
     private String requestData;
 
-    @Column(name = "response_data", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "response_data")
     private String responseData;
 
     @Column(name = "action", nullable = false)

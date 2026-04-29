@@ -14,7 +14,7 @@ public class ProductEventConsumer {
 
     private final RetryJobService retryJobService;
 
-    @KafkaListener(topics = "product-events", groupId = "product-events-group")
+    @KafkaListener(topics = "product-events", groupId = "product-events-retry-listener", containerFactory = "productEventKafkaListenerContainerFactory")
     public void consume(ProductEvent event) {
         log.info("Received ProductEvent: {}", event);
         if ("FAILED".equalsIgnoreCase(event.getStatus())) {

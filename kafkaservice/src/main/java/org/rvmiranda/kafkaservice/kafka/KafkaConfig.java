@@ -2,6 +2,9 @@ package org.rvmiranda.kafkaservice.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.rvmiranda.kafkaservice.dto.ProductDto;
+import org.rvmiranda.kafkaservice.domain.model.OrderEvent;
+import org.rvmiranda.kafkaservice.domain.model.PaymentEvent;
+import org.rvmiranda.kafkaservice.domain.model.ProductEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -94,6 +97,86 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(retryConsumerFactory());
+        return factory;
+    }
+    // ── Consumer para ProductEvent (product-events topic) ────────────────────
+
+    @Bean
+    public ConsumerFactory<String, ProductEvent> productEventConsumerFactory() {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonDeserializer<ProductEvent> jsonDeserializer = new JsonDeserializer<>(ProductEvent.class, mapper);
+        jsonDeserializer.setUseTypeHeaders(false);
+
+        org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<ProductEvent> errorHandlingDeserializer =
+            new org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), errorHandlingDeserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, ProductEvent> productEventKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, ProductEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(productEventConsumerFactory());
+        return factory;
+    }
+
+    // ── Consumer para OrderEvent (order-events topic) ─────────────────────────
+
+    @Bean
+    public ConsumerFactory<String, OrderEvent> orderEventConsumerFactory() {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonDeserializer<OrderEvent> jsonDeserializer = new JsonDeserializer<>(OrderEvent.class, mapper);
+        jsonDeserializer.setUseTypeHeaders(false);
+
+        org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<OrderEvent> errorHandlingDeserializer =
+            new org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), errorHandlingDeserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderEvent> orderEventKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, OrderEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(orderEventConsumerFactory());
+        return factory;
+    }
+
+    // ── Consumer para PaymentEvent (payment-events topic) ─────────────────────
+
+    @Bean
+    public ConsumerFactory<String, PaymentEvent> paymentEventConsumerFactory() {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonDeserializer<PaymentEvent> jsonDeserializer = new JsonDeserializer<>(PaymentEvent.class, mapper);
+        jsonDeserializer.setUseTypeHeaders(false);
+
+        org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<PaymentEvent> errorHandlingDeserializer =
+            new org.springframework.kafka.support.serializer.ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), errorHandlingDeserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, PaymentEvent> paymentEventKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, PaymentEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(paymentEventConsumerFactory());
         return factory;
     }
 }
