@@ -22,13 +22,47 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<GenericResponse<Order>> createOrder(@RequestBody OrderRequest request) {
         try {
-            Order createdOrder = orderService.createOrder(request.getProductId(), request.getQuantity(), request.getUserEmail());
-            return ResponseEntity.ok(GenericResponse.success(createdOrder, "Orden creada exitosamente"));
+            Order createdOrder = orderService.createOrder(
+                    request.getProductId(),
+                    request.getProductName(),
+                    request.getTotalPrice(),
+                    request.getQuantity(),
+                    request.getUserEmail()
+            );
+
+            // Emitir evento para actualizar inventario (inventory_update_events)
+            String inventoryDataJson = String.format("{\"productId\":\"%s\", \"quantity\":%s}",
+                    request.getProductId(), request.getQuantity());
+            var inventoryEvent = new OrderEvent(
+                    UUID.randomUUID().toString(),
+                    createdOrder.getId(),
+                    "CREATE_ORDER_INVENTORY",
+                    "SUCCESS",
+                    inventoryDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("inventory_update_events", inventoryEvent);
+
+            // Emitir evento de estado de orden (order_status_changed_events)
+            String statusDataJson = String.format("{\"status\":\"%s\"}", createdOrder.getStatus());
+            var statusEvent = new OrderEvent(
+                    UUID.randomUUID().toString(),
+                    createdOrder.getId(),
+                    "CREATE_ORDER_STATUS",
+                    "SUCCESS",
+                    statusDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("order_status_changed_events", statusEvent);
+
+            return ResponseEntity.ok(GenericResponse.success(createdOrder, "Orden creada exitosamente y eventos asíncronos enviados"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"productId\":\"%s\", \"quantity\":%s, \"userEmail\":\"%s\"}",
                     request.getProductId(), request.getQuantity(), request.getUserEmail());
 
-            var failedEvent = new FailedOrderEvent(
+            var failedEvent = new OrderEvent(
                     UUID.randomUUID().toString(),
                     "unknown-order-id",
                     "CREATE",
@@ -37,7 +71,7 @@ public class OrderController {
                     null,
                     e.getMessage()
             );
-            kafkaTemplate.send("order-events", failedEvent);
+            kafkaTemplate.send("order-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Error al crear la orden, evento de reintento enviado a Kafka: " + e.getMessage())
@@ -55,11 +89,25 @@ public class OrderController {
     public ResponseEntity<GenericResponse<String>> updateOrderStatus(@PathVariable String id, @RequestParam String status) {
         try {
             orderService.updateOrderStatus(id, status);
-            return ResponseEntity.ok(GenericResponse.success(id, "Estado actualizado a " + status));
+
+            // Emitir evento de estado de orden (order_status_changed_events)
+            String statusDataJson = String.format("{\"status\":\"%s\"}", status);
+            var statusEvent = new OrderEvent(
+                    UUID.randomUUID().toString(),
+                    id,
+                    "UPDATE_ORDER_STATUS",
+                    "SUCCESS",
+                    statusDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("order_status_changed_events", statusEvent);
+
+            return ResponseEntity.ok(GenericResponse.success(id, "Estado actualizado a " + status + " y evento asíncrono enviado"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"status\":\"%s\"}", status);
 
-            var failedEvent = new FailedOrderEvent(
+            var failedEvent = new OrderEvent(
                     UUID.randomUUID().toString(),
                     id,
                     "UPDATE",
@@ -68,7 +116,7 @@ public class OrderController {
                     null,
                     e.getMessage()
             );
-            kafkaTemplate.send("order-events", failedEvent);
+            kafkaTemplate.send("order-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Error al actualizar la orden, evento de reintento enviado a Kafka: " + e.getMessage())
@@ -110,7 +158,7 @@ public class OrderController {
         try {
             throw new RuntimeException("Simulated error processing order in external system");
         } catch (RuntimeException ex) {
-            var failedEvent = new FailedOrderEvent(
+            var failedEvent = new OrderEvent(
                     UUID.randomUUID().toString(),
                     "fake-test-order-id",
                     "CREATE",
@@ -119,14 +167,14 @@ public class OrderController {
                     null,
                     ex.getMessage()
             );
-            kafkaTemplate.send("order-events", failedEvent);
+            kafkaTemplate.send("order-events-retry", failedEvent);
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Orden fallida simulada, evento enviado a Kafka.")
             );
         }
     }
 
-    public record FailedOrderEvent(
+    public record OrderEvent(
             String eventId,
             String orderId,
             String action,
