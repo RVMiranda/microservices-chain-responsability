@@ -30,12 +30,27 @@ public class ProductController {
                     .build();
 
             Product created = productService.createProduct(newProduct);
+
+            // Emitir evento de éxito
+            String requestDataJson = String.format("{\"name\":\"%s\", \"description\":\"%s\", \"price\":%s, \"stock\":%s}",
+                    request.getName(), request.getDescription(), request.getPrice(), request.getStock());
+            var successEvent = new ProductEvent(
+                    UUID.randomUUID().toString(),
+                    created.getId(),
+                    "CREATE",
+                    "SUCCESS",
+                    requestDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("inventory_update_events", successEvent);
+
             return ResponseEntity.ok(GenericResponse.success(created, "Producto creado exitosamente"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"name\":\"%s\", \"description\":\"%s\", \"price\":%s, \"stock\":%s}",
                     request.getName(), request.getDescription(), request.getPrice(), request.getStock());
 
-            var failedEvent = new FailedProductEvent(
+            var failedEvent = new ProductEvent(
                     UUID.randomUUID().toString(),
                     "unknown-product-id",
                     "CREATE",
@@ -45,7 +60,7 @@ public class ProductController {
                     e.getMessage()
             );
 
-            kafkaTemplate.send("product-events", failedEvent);
+            kafkaTemplate.send("product-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Error al crear el producto, evento de reintento enviado a Kafka: " + e.getMessage())
@@ -80,6 +95,21 @@ public class ProductController {
                     .build();
 
             Product updated = productService.updateProduct(id, updateData);
+
+            // Emitir evento de éxito
+            String requestDataJson = String.format("{\"name\":\"%s\", \"description\":\"%s\", \"price\":%s, \"stock\":%s}",
+                    request.getName(), request.getDescription(), request.getPrice(), request.getStock());
+            var successEvent = new ProductEvent(
+                    UUID.randomUUID().toString(),
+                    updated.getId(),
+                    "UPDATE",
+                    "SUCCESS",
+                    requestDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("inventory_update_events", successEvent);
+
             return ResponseEntity.ok(GenericResponse.success(updated, "Producto actualizado correctamente"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
@@ -100,6 +130,20 @@ public class ProductController {
     public ResponseEntity<GenericResponse<String>> reduceStock(@PathVariable String id, @RequestParam Integer quantity) {
         try {
             productService.reduceStock(id, quantity);
+
+            // Emitir evento de éxito
+            String requestDataJson = String.format("{\"quantity\":%s}", quantity);
+            var successEvent = new ProductEvent(
+                    UUID.randomUUID().toString(),
+                    id,
+                    "REDUCE_STOCK",
+                    "SUCCESS",
+                    requestDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("inventory_update_events", successEvent);
+
             return ResponseEntity.ok(GenericResponse.success(id, "Stock reducido exitosamente"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
@@ -113,7 +157,7 @@ public class ProductController {
             throw new RuntimeException("Simulated error saving product to external system");
         } catch (RuntimeException ex) {
             // Emitting failure event to Kafka
-            var failedEvent = new FailedProductEvent(
+            var failedEvent = new ProductEvent(
                     UUID.randomUUID().toString(),
                     "fake-test-product-id",
                     "CREATE",
@@ -123,7 +167,7 @@ public class ProductController {
                     ex.getMessage()
             );
 
-            kafkaTemplate.send("product-events", failedEvent);
+            kafkaTemplate.send("product-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Producto fallido simulado, evento enviado a Kafka.")
@@ -131,7 +175,7 @@ public class ProductController {
         }
     }
 
-    public record FailedProductEvent(
+    public record ProductEvent(
             String eventId,
             String productId,
             String action,
