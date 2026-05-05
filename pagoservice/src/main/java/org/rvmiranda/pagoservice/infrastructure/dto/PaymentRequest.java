@@ -7,5 +7,7 @@ import java.math.BigDecimal;
 @Data
 public class PaymentRequest {
     private String orderId;
+    private String userEmail;
+    private Double amount;
     private String paymentMethod;
 }

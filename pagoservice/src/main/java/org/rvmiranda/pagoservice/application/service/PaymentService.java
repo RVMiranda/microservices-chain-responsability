@@ -5,8 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.rvmiranda.pagoservice.common.GenericResponse;
 import org.rvmiranda.pagoservice.domain.model.Payment;
 import org.rvmiranda.pagoservice.domain.port.PaymentRepositoryPort;
-import org.rvmiranda.pagoservice.infrastructure.client.OrderClient;
-import org.rvmiranda.pagoservice.infrastructure.dto.OrderDto;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,40 +15,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PaymentService {
     private final PaymentRepositoryPort paymentRepositoryPort;
-    private final OrderClient orderClient;
 
-    public Payment processPayment(String orderId, String paymentMethod) {
-        OrderDto order;
-
-        // 1. Preguntar por la orden
-        try {
-            GenericResponse<OrderDto> response = orderClient.getOrderById(orderId);
-            order = response.getData();
-        } catch (FeignException e) {
-            throw new RuntimeException("Error: La orden " + orderId + " no existe.");
+    public Payment processPayment(String orderId, String paymentMethod, Double amount, String userEmail) {
+        // Validación de monto
+        if (amount == null || amount <= 0) {
+            throw new RuntimeException("Error: El monto del pago debe ser mayor a 0");
         }
 
-        // 2. Validar que no esté pagada o cancelada
-        if (!"CREADA".equals(order.getStatus())) {
-            throw new RuntimeException("Error: La orden ya fue procesada (Estado actual: " + order.getStatus() + ")");
-        }
-
-        // 3. Crear el registro del pago usando el precio que nos dio la orden
+        // Crear el registro del pago
         Payment newPayment = Payment.builder()
                 .orderId(orderId)
-                .userEmail(order.getUserEmail())
-                .amount(order.getTotalPrice())
+                .userEmail(userEmail)
+                .amount(amount)
                 .paymentMethod(paymentMethod)
                 .status("EXITOSO")
                 .processedAt(LocalDateTime.now())
                 .build();
 
-        Payment savedPayment = paymentRepositoryPort.save(newPayment);
-
-        // 4. Avisarle a la orden que ya cobramos
-        orderClient.updateOrderStatus(orderId, "PAGADA");
-
-        return savedPayment;
+        return paymentRepositoryPort.save(newPayment);
     }
 
     public List<Payment> getAllPayments() {
@@ -79,8 +62,7 @@ public class PaymentService {
         payment.setStatus("REEMBOLSADO");
         Payment updatedPayment = paymentRepositoryPort.save(payment);
 
-        // 4. ¡Magia! Le avisamos a la orden que la compra se echó para atrás
-        orderClient.updateOrderStatus(payment.getOrderId(), "REEMBOLSADA");
+        // NOTA: La notificación a la orden ahora se hará mediante eventos asíncronos en el controlador.
 
         return updatedPayment;
     }

@@ -29,17 +29,37 @@ public class PaymentController {
         }
     }*/
 
-    // Actualizado para hacer match con el diagrama: /pagos/procesar
     @PostMapping("/procesar")
     public ResponseEntity<GenericResponse<Payment>> processPayment(@RequestBody PaymentRequest request) {
         try {
-            Payment payment = paymentService.processPayment(request.getOrderId(), request.getPaymentMethod());
-            return ResponseEntity.ok(GenericResponse.success(payment, "Pago procesado y orden actualizada"));
+            Payment payment = paymentService.processPayment(
+                    request.getOrderId(), 
+                    request.getPaymentMethod(), 
+                    request.getAmount(), 
+                    request.getUserEmail()
+            );
+
+            // Publicar evento de éxito en tópico normal
+            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\"}",
+                    request.getOrderId(), request.getPaymentMethod(), request.getAmount(), request.getUserEmail());
+
+            var successEvent = new PaymentEvent(
+                    UUID.randomUUID().toString(),
+                    payment.getId(),
+                    "PROCESS",
+                    "SUCCESS",
+                    requestDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("payment_received_events", successEvent);
+
+            return ResponseEntity.ok(GenericResponse.success(payment, "Pago procesado y evento enviado asíncronamente"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\"}",
                     request.getOrderId(), request.getPaymentMethod());
 
-            var failedEvent = new FailedPaymentEvent(
+            var failedEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
                     "unknown-payment-id",
                     "PROCESS",
@@ -48,7 +68,7 @@ public class PaymentController {
                     null,
                     e.getMessage()
             );
-            kafkaTemplate.send("payment-events", failedEvent);
+            kafkaTemplate.send("payment-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Error al procesar el pago, evento de reintento enviado a Kafka: " + e.getMessage())
@@ -90,7 +110,7 @@ public class PaymentController {
         } catch (Exception e) {
             String requestDataJson = String.format("{\"action\":\"REFUND\"}");
 
-            var failedEvent = new FailedPaymentEvent(
+            var failedEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
                     id,
                     "REFUND",
@@ -99,7 +119,7 @@ public class PaymentController {
                     null,
                     e.getMessage()
             );
-            kafkaTemplate.send("payment-events", failedEvent);
+            kafkaTemplate.send("payment-events-retry", failedEvent);
 
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Error al procesar el reembolso, evento de reintento enviado a Kafka: " + e.getMessage())
@@ -113,7 +133,7 @@ public class PaymentController {
         try {
             throw new RuntimeException("Simulated error processing payment in external system");
         } catch (RuntimeException ex) {
-            var failedEvent = new FailedPaymentEvent(
+            var failedEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
                     "fake-test-payment-id",
                     "PROCESS",
@@ -122,14 +142,14 @@ public class PaymentController {
                     null,
                     ex.getMessage()
             );
-            kafkaTemplate.send("payment-events", failedEvent);
+            kafkaTemplate.send("payment-events-retry", failedEvent);
             return ResponseEntity.badRequest().body(
                     GenericResponse.error("Pago fallido simulado, evento enviado a Kafka.")
             );
         }
     }
 
-    public record FailedPaymentEvent(
+    public record PaymentEvent(
             String eventId,
             String paymentId,
             String action,
