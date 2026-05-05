@@ -20,7 +20,7 @@ public class OrderEventConsumer {
     private final OrderRetryJobRepository orderRetryJobRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "order-events", groupId = "order-events-retry-listener", containerFactory = "orderEventKafkaListenerContainerFactory")
+    @KafkaListener(topics = "order-events-retry", groupId = "order-events-retry-listener", containerFactory = "orderEventKafkaListenerContainerFactory")
     public void consume(OrderEvent event) {
         log.info("Received OrderEvent: {}", event);
         if ("FAILED".equalsIgnoreCase(event.getStatus())) {

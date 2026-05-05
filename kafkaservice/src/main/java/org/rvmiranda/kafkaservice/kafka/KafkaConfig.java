@@ -24,6 +24,8 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.config.TopicBuilder;
 
 @EnableKafka
 @Configuration
@@ -33,6 +35,38 @@ public class KafkaConfig {
 
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
+
+    // ── Topic Definitions ─────────────────────────────────────────────────────
+
+    @Bean
+    public NewTopic paymentReceivedEventsTopic() {
+        return TopicBuilder.name("payment_received_events").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic orderStatusChangedEventsTopic() {
+        return TopicBuilder.name("order_status_changed_events").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic inventoryUpdateEventsTopic() {
+        return TopicBuilder.name("inventory_update_events").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic productEventsRetryTopic() {
+        return TopicBuilder.name("product-events-retry").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic orderEventsRetryTopic() {
+        return TopicBuilder.name("order-events-retry").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic paymentEventsRetryTopic() {
+        return TopicBuilder.name("payment-events-retry").partitions(1).replicas(1).build();
+    }
 
     // ── Producer ──────────────────────────────────────────────────────────────
 

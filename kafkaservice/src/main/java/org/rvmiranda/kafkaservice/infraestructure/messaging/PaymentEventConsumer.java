@@ -20,7 +20,7 @@ public class PaymentEventConsumer {
     private final PaymentRetryJobRepository paymentRetryJobRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "payment-events", groupId = "payment-events-retry-listener", containerFactory = "paymentEventKafkaListenerContainerFactory")
+    @KafkaListener(topics = "payment-events-retry", groupId = "payment-events-retry-listener", containerFactory = "paymentEventKafkaListenerContainerFactory")
     public void consume(PaymentEvent event) {
         log.info("Received PaymentEvent: {}", event);
         if ("FAILED".equalsIgnoreCase(event.getStatus())) {
