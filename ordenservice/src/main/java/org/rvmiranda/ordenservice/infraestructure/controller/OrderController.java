@@ -12,20 +12,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import org.rvmiranda.ordenservice.infraestructure.client.ProductClient;
+import org.rvmiranda.ordenservice.infraestructure.dto.ProductDto;
+
 @RestController
 @RequestMapping("/ordenes")
 @RequiredArgsConstructor
 public class OrderController {
     private final OrderService orderService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ProductClient productClient;
 
     @PostMapping
     public ResponseEntity<GenericResponse<Order>> createOrder(@RequestBody OrderRequest request) {
         try {
+            // Obtener detalles del producto sincrónicamente
+            GenericResponse<ProductDto> productResponse = productClient.getProductById(request.getProductId());
+            if (productResponse == null || productResponse.getData() == null) {
+                return ResponseEntity.badRequest().body(GenericResponse.error("Error: Producto no encontrado"));
+            }
+            ProductDto product = productResponse.getData();
+            
+            String productName = product.getName();
+            Double totalPrice = product.getPrice() * request.getQuantity();
+
             Order createdOrder = orderService.createOrder(
                     request.getProductId(),
-                    request.getProductName(),
-                    request.getTotalPrice(),
+                    productName,
+                    totalPrice,
                     request.getQuantity(),
                     request.getUserEmail()
             );
@@ -55,7 +69,7 @@ public class OrderController {
                     null,
                     null
             );
-            kafkaTemplate.send("order_status_changed_events", statusEvent);
+            kafkaTemplate.send("order-events", statusEvent);
 
             return ResponseEntity.ok(GenericResponse.success(createdOrder, "Orden creada exitosamente y eventos asíncronos enviados"));
         } catch (Exception e) {
@@ -88,9 +102,28 @@ public class OrderController {
     @PutMapping("/{id}/update-status")
     public ResponseEntity<GenericResponse<String>> updateOrderStatus(@PathVariable String id, @RequestParam String status) {
         try {
+            // Obtener la orden antes de actualizar para tener los datos de inventario
+            Order existingOrder = orderService.getOrderById(id);
+            
             orderService.updateOrderStatus(id, status);
 
-            // Emitir evento de estado de orden (order_status_changed_events)
+            // Si se cancela la orden, emitir evento para restaurar el inventario
+            if ("CANCELADA".equalsIgnoreCase(status)) {
+                String inventoryDataJson = String.format("{\"productId\":\"%s\", \"quantity\":%s}",
+                        existingOrder.getProductId(), existingOrder.getQuantity());
+                var inventoryEvent = new OrderEvent(
+                        UUID.randomUUID().toString(),
+                        id,
+                        "RESTORE_ORDER_INVENTORY",
+                        "SUCCESS",
+                        inventoryDataJson,
+                        null,
+                        null
+                );
+                kafkaTemplate.send("inventory_update_events", inventoryEvent);
+            }
+
+            // Emitir evento de estado de orden (order-events)
             String statusDataJson = String.format("{\"status\":\"%s\"}", status);
             var statusEvent = new OrderEvent(
                     UUID.randomUUID().toString(),
@@ -101,7 +134,7 @@ public class OrderController {
                     null,
                     null
             );
-            kafkaTemplate.send("order_status_changed_events", statusEvent);
+            kafkaTemplate.send("order-events", statusEvent);
 
             return ResponseEntity.ok(GenericResponse.success(id, "Estado actualizado a " + status + " y evento asíncrono enviado"));
         } catch (Exception e) {
