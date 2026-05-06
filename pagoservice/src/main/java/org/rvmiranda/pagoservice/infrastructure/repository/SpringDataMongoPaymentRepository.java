@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface SpringDataMongoPaymentRepository extends MongoRepository<PaymentEntity, String> {
     Optional<PaymentEntity> findByOrderId(String orderId);
+    java.util.List<PaymentEntity> findAllByOrderId(String orderId);
 }

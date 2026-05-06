@@ -42,6 +42,13 @@ public class PaymentRepositoryAdapter implements PaymentRepositoryPort {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Payment> findAllByOrderId(String orderId) {
+        return mongoRepository.findAllByOrderId(orderId).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
     private Payment toDomain(PaymentEntity entity) {
         return Payment.builder()
                 .id(entity.getId())

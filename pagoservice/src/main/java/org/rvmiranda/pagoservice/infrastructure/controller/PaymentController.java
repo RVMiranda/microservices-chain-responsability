@@ -31,28 +31,36 @@ public class PaymentController {
 
     @PostMapping("/procesar")
     public ResponseEntity<GenericResponse<Payment>> processPayment(@RequestBody PaymentRequest request) {
+        Payment payment = null;
         try {
-            Payment payment = paymentService.processPayment(
+            payment = paymentService.processPayment(
                     request.getOrderId(), 
                     request.getPaymentMethod(), 
                     request.getAmount(), 
                     request.getUserEmail()
             );
 
+            // Obtener información de si está completamente pagado desde la validación del servicio o calculándolo.
+            // Necesitamos pasar isFullyPaid desde paymentService, por ahora asumimos que paymentService lo valida
+            // y agregaremos un campo transitorio o lanzamos la validación.
+            // Para simplificar, PaymentService lanzará error si se pasa, así que podríamos calcularlo aquí,
+            // pero mejor lo hacemos en un método de servicio.
+            boolean isFullyPaid = paymentService.isOrderFullyPaid(request.getOrderId());
+
             // Publicar evento de éxito en tópico normal
-            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\"}",
-                    request.getOrderId(), request.getPaymentMethod(), request.getAmount(), request.getUserEmail());
+            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b}",
+                    request.getOrderId(), request.getPaymentMethod(), request.getAmount(), request.getUserEmail(), isFullyPaid);
 
             var successEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
                     payment.getId(),
-                    "PROCESS",
+                    isFullyPaid ? "PROCESS_FULL" : "PROCESS_PARTIAL",
                     "SUCCESS",
                     requestDataJson,
                     null,
                     null
             );
-            kafkaTemplate.send("payment_received_events", successEvent);
+            kafkaTemplate.send("payment-events", successEvent);
 
             return ResponseEntity.ok(GenericResponse.success(payment, "Pago procesado y evento enviado asíncronamente"));
         } catch (Exception e) {
@@ -61,7 +69,7 @@ public class PaymentController {
 
             var failedEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
-                    "unknown-payment-id",
+                    (payment != null) ? payment.getId() : "unknown-payment-id",
                     "PROCESS",
                     "FAILED",
                     requestDataJson,
@@ -106,7 +114,26 @@ public class PaymentController {
     @PutMapping("/{id}/reembolso")
     public ResponseEntity<GenericResponse<Payment>> refundPayment(@PathVariable String id) {
         try {
-            return ResponseEntity.ok(GenericResponse.success(paymentService.refundPayment(id), "Reembolso procesado exitosamente"));
+            Payment refundedPayment = paymentService.refundPayment(id);
+            
+            // Check if still fully paid (probably false, or true if order was overpaid initially, but we don't allow overpay)
+            boolean isFullyPaid = paymentService.isOrderFullyPaid(refundedPayment.getOrderId());
+            
+            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b}",
+                    refundedPayment.getOrderId(), refundedPayment.getPaymentMethod(), refundedPayment.getAmount(), refundedPayment.getUserEmail(), isFullyPaid);
+
+            var successEvent = new PaymentEvent(
+                    UUID.randomUUID().toString(),
+                    id,
+                    "REFUND",
+                    "SUCCESS",
+                    requestDataJson,
+                    null,
+                    null
+            );
+            kafkaTemplate.send("payment-events", successEvent);
+
+            return ResponseEntity.ok(GenericResponse.success(refundedPayment, "Reembolso procesado exitosamente"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"action\":\"REFUND\"}");
 
