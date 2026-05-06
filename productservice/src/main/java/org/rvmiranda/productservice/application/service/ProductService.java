@@ -51,4 +51,10 @@ public class ProductService {
         product.setStock(product.getStock() - quantity);
         productRepositoryPort.save(product);
     }
+
+    public void restoreStock(String id, Integer quantity) {
+        Product product = getProductById(id);
+        product.setStock(product.getStock() + quantity);
+        productRepositoryPort.save(product);
+    }
 }

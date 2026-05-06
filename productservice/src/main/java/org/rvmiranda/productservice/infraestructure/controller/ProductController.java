@@ -43,7 +43,7 @@ public class ProductController {
                     null,
                     null
             );
-            kafkaTemplate.send("inventory_update_events", successEvent);
+            kafkaTemplate.send("product-events", successEvent);
 
             return ResponseEntity.ok(GenericResponse.success(created, "Producto creado exitosamente"));
         } catch (Exception e) {
@@ -108,7 +108,7 @@ public class ProductController {
                     null,
                     null
             );
-            kafkaTemplate.send("inventory_update_events", successEvent);
+            kafkaTemplate.send("product-events", successEvent);
 
             return ResponseEntity.ok(GenericResponse.success(updated, "Producto actualizado correctamente"));
         } catch (RuntimeException e) {

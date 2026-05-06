@@ -21,20 +21,36 @@ public class InventoryEventConsumer {
         log.info("Received InventoryEvent: {}", message);
         try {
             JsonNode root = objectMapper.readTree(message);
-            // Si el evento viene de OrderController, la accion es CREATE_ORDER_INVENTORY
+            
+            // Verificamos si el evento viene con estructura de OrderEvent
             String action = root.path("action").asText("");
             String status = root.path("status").asText("");
             
-            if ("SUCCESS".equalsIgnoreCase(status) && "CREATE_ORDER_INVENTORY".equalsIgnoreCase(action)) {
-                String requestDataStr = root.path("requestData").asText("{}");
-                JsonNode requestData = objectMapper.readTree(requestDataStr);
+            if ("SUCCESS".equalsIgnoreCase(status) && 
+                ("CREATE_ORDER_INVENTORY".equalsIgnoreCase(action) || "RESTORE_ORDER_INVENTORY".equalsIgnoreCase(action))) {
+                
+                // requestData puede venir como un string JSON serializado o como un objeto
+                JsonNode requestData = root.path("requestData");
+                if (requestData.isTextual()) {
+                    requestData = objectMapper.readTree(requestData.asText());
+                }
+                
                 String productId = requestData.path("productId").asText("");
                 int quantity = requestData.path("quantity").asInt(0);
                 
                 if (!productId.isEmpty() && quantity > 0) {
-                    log.info("Reducing stock for product {} by {}", productId, quantity);
-                    productService.reduceStock(productId, quantity);
+                    if ("CREATE_ORDER_INVENTORY".equalsIgnoreCase(action)) {
+                        log.info("Reducing stock for product {} by {}", productId, quantity);
+                        productService.reduceStock(productId, quantity);
+                    } else if ("RESTORE_ORDER_INVENTORY".equalsIgnoreCase(action)) {
+                        log.info("Restoring stock for product {} by {}", productId, quantity);
+                        productService.restoreStock(productId, quantity);
+                    }
+                } else {
+                    log.warn("Could not extract productId or quantity from event data. ProductId: {}, Quantity: {}", productId, quantity);
                 }
+            } else {
+                log.info("Event ignored. Status: {}, Action: {}", status, action);
             }
         } catch (Exception e) {
             log.error("Error processing InventoryEvent: {}", e.getMessage(), e);
