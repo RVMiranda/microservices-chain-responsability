@@ -70,6 +70,7 @@ public class OrderController {
                     null
             );
             kafkaTemplate.send("order-events", statusEvent);
+            kafkaTemplate.send("order-status-changed-events", statusEvent);
 
             return ResponseEntity.ok(GenericResponse.success(createdOrder, "Orden creada exitosamente y eventos asíncronos enviados"));
         } catch (Exception e) {
@@ -135,6 +136,7 @@ public class OrderController {
                     null
             );
             kafkaTemplate.send("order-events", statusEvent);
+            kafkaTemplate.send("order-status-changed-events", statusEvent);
 
             return ResponseEntity.ok(GenericResponse.success(id, "Estado actualizado a " + status + " y evento asíncrono enviado"));
         } catch (Exception e) {

@@ -6,7 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.rvmiranda.ordenservice.application.service.OrderService;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -15,6 +18,7 @@ public class PaymentEventConsumer {
 
     private final OrderService orderService;
     private final ObjectMapper objectMapper;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @KafkaListener(topics = "payment-events", groupId = "ordenservice-group")
     public void consumePaymentEvent(String message) {
@@ -38,23 +42,43 @@ public class PaymentEventConsumer {
             if ("PROCESS_FULL".equals(action)) {
                 log.info("Pago completo detectado. Actualizando orden {} a PAGADA", orderId);
                 orderService.updateOrderStatus(orderId, "PAGADA");
+                emitStatusChangeEvent(orderId, "PAGADA");
             } else if ("PROCESS_PARTIAL".equals(action)) {
                 log.info("Pago parcial detectado. Actualizando orden {} a PAGO_PARCIAL", orderId);
                 orderService.updateOrderStatus(orderId, "PAGO_PARCIAL");
+                emitStatusChangeEvent(orderId, "PAGO_PARCIAL");
             } else if ("REFUND".equals(action)) {
                 boolean isFullyPaid = requestDataNode.path("isFullyPaid").asBoolean(false);
                 if (!isFullyPaid) {
-                    // Aquí podríamos dejarla como PAGO_PARCIAL si aún hay saldo, o REEMBOLSADA si quedó en 0.
-                    // Asumiremos REEMBOLSADA por ahora, pero la lógica real dependería del saldo total restante.
-                    // Para alinearnos con la solicitud del usuario:
-                    // "recuerda mantener el status de 'CANCELADA' y agrega otro que diga 'REEMBOLSADA' si se rembolsaron los pagos de la misma en su totalidad."
-                    // Vamos a marcarla como REEMBOLSADA por simplicidad ante un REFUND si el usuario dice que "se rembolsaron los pagos en su totalidad".
                     log.info("Reembolso detectado. Actualizando orden {} a REEMBOLSADA", orderId);
                     orderService.updateOrderStatus(orderId, "REEMBOLSADA");
+                    emitStatusChangeEvent(orderId, "REEMBOLSADA");
                 }
             }
         } catch (Exception e) {
             log.error("Error procesando evento de pago en ordenservice: {}", e.getMessage(), e);
         }
+    }
+
+    private void emitStatusChangeEvent(String orderId, String newStatus) {
+        String statusDataJson = String.format("{\"status\":\"%s\"}", newStatus);
+        
+        // El OrderEvent original asume esta estructura, lo simularemos aquí
+        // usando un mapa genérico o un string si no tenemos la clase OrderEvent importada.
+        // Dado que OrderEvent está en controller, es mejor enviar un JSON directamente 
+        // o mapearlo a Map. Vamos a mapearlo a Map para asegurar que Jackson lo serialice bien,
+        // o si es posible, podemos reusar la definición.
+        
+        java.util.Map<String, Object> statusEvent = new java.util.HashMap<>();
+        statusEvent.put("eventId", UUID.randomUUID().toString());
+        statusEvent.put("orderId", orderId);
+        statusEvent.put("action", "UPDATE_ORDER_STATUS_FROM_PAYMENT");
+        statusEvent.put("status", "SUCCESS");
+        statusEvent.put("requestData", statusDataJson);
+        statusEvent.put("responseData", null);
+        statusEvent.put("errorDetails", null);
+
+        kafkaTemplate.send("order-events", statusEvent);
+        kafkaTemplate.send("order-status-changed-events", statusEvent);
     }
 }
