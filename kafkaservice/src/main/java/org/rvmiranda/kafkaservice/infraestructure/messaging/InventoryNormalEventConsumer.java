@@ -1,8 +1,9 @@
 package org.rvmiranda.kafkaservice.infraestructure.messaging;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.rvmiranda.kafkaservice.domain.model.OrderEvent;
 import org.rvmiranda.kafkaservice.entities.postgres.ProductHistory;
 import org.rvmiranda.kafkaservice.repository.postgres.ProductHistoryRepository;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -16,24 +17,38 @@ import java.time.OffsetDateTime;
 public class InventoryNormalEventConsumer {
 
     private final ProductHistoryRepository productHistoryRepository;
+    private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "inventory_update_events", groupId = "inventory-normal-listener", containerFactory = "orderEventKafkaListenerContainerFactory")
-    public void consume(OrderEvent event) {
-        log.info("Received Normal InventoryEvent: {}", event);
+    @KafkaListener(topics = "inventory_update_events", groupId = "inventory-normal-listener")
+    public void consume(String message) {
+        log.info("Received Normal InventoryEvent: {}", message);
         try {
-            // Guardar en ProductHistory
-            // Usamos OrderEvent porque en el product controller emitimos ProductEvent y en Order emitimos OrderEvent.
-            // Para simplificar, la clase POJO asimila los atributos básicos (eventId, action, status, requestData)
+            JsonNode root = objectMapper.readTree(message);
+            String action = root.path("action").asText("");
+            
+            // Tratamos de leer productId del requestData (enviado por ProductController u OrderController)
+            JsonNode requestData = root.path("requestData");
+            if (requestData.isTextual()) {
+                requestData = objectMapper.readTree(requestData.asText());
+            }
+            
+            String productId = requestData.path("productId").asText("");
+            if (productId.isEmpty()) {
+                // Si no está en requestData, intentamos ver si vino en el payload principal (en caso de OrderEvent/ProductEvent mal seteados)
+                productId = root.path("productId").asText("");
+            }
+            if (productId.isEmpty()) {
+                productId = root.path("orderId").asText("N/A"); // Fallback
+            }
+
             ProductHistory history = ProductHistory.builder()
-                    .productId(event.getOrderId() != null ? event.getOrderId() : "N/A") // El ID del producto viene en orderId cuando usamos ProductEvent
-                    .action(event.getAction())
-                    .details(event.getRequestData())
+                    .productId(productId)
+                    .action(action)
+                    .details(root.path("requestData").asText("{}"))
                     .createdAt(OffsetDateTime.now())
                     .build();
             productHistoryRepository.save(history);
-            log.info("Saved ProductHistory for action: {}", event.getAction());
-
-            // Actualizar inventario ya se hace en productservice, kafkaservice solo guarda historial.
+            log.info("Saved ProductHistory for action: {}", action);
 
         } catch (Exception e) {
             log.error("Error processing Normal InventoryEvent: {}", e.getMessage(), e);

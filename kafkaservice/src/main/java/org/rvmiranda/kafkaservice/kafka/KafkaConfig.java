@@ -40,17 +40,22 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic paymentReceivedEventsTopic() {
-        return TopicBuilder.name("payment_received_events").partitions(1).replicas(1).build();
+        return TopicBuilder.name("payment-events").partitions(1).replicas(1).build();
     }
 
     @Bean
     public NewTopic orderStatusChangedEventsTopic() {
-        return TopicBuilder.name("order_status_changed_events").partitions(1).replicas(1).build();
+        return TopicBuilder.name("order-events").partitions(1).replicas(1).build();
     }
 
     @Bean
     public NewTopic inventoryUpdateEventsTopic() {
         return TopicBuilder.name("inventory_update_events").partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic productEventsTopic() {
+        return TopicBuilder.name("product-events").partitions(1).replicas(1).build();
     }
 
     @Bean

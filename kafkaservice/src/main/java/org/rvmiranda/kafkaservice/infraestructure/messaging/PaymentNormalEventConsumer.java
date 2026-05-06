@@ -23,7 +23,7 @@ public class PaymentNormalEventConsumer {
     private final ShippingRepository shippingRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "payment_received_events", groupId = "payment-normal-listener", containerFactory = "paymentEventKafkaListenerContainerFactory")
+    @KafkaListener(topics = "payment-events", groupId = "payment-normal-listener", containerFactory = "paymentEventKafkaListenerContainerFactory")
     public void consume(PaymentEvent event) {
         log.info("Received Normal PaymentEvent: {}", event);
         try {
@@ -41,18 +41,32 @@ public class PaymentNormalEventConsumer {
             log.info(">>> Enviando correo de pago recibido para el pago: {}", event.getPaymentId());
 
             // 3. Evaluar si debe guardarse en la tabla de envíos (shipping)
-            if ("SUCCESS".equalsIgnoreCase(event.getStatus()) && "PROCESS".equalsIgnoreCase(event.getAction())) {
+            if ("SUCCESS".equalsIgnoreCase(event.getStatus())) {
                 JsonNode requestDataNode = objectMapper.readTree(event.getRequestData());
                 String orderId = requestDataNode.path("orderId").asText("");
+                
                 if (!orderId.isEmpty()) {
-                    Shipping shipping = shippingRepository.findByOrderId(orderId)
-                            .orElse(Shipping.builder()
-                                    .orderId(orderId)
-                                    .createdAt(OffsetDateTime.now())
-                                    .build());
-                    shipping.setStatus("PENDING");
-                    shippingRepository.save(shipping);
-                    log.info("Saved/Updated Shipping table for orderId: {}", orderId);
+                    if ("PROCESS_FULL".equalsIgnoreCase(event.getAction())) {
+                        Shipping shipping = shippingRepository.findByOrderId(orderId)
+                                .orElse(Shipping.builder()
+                                        .orderId(orderId)
+                                        .createdAt(OffsetDateTime.now())
+                                        .build());
+                        shipping.setStatus("PENDING");
+                        shippingRepository.save(shipping);
+                        log.info("Saved/Updated Shipping table (PENDING) for orderId: {}", orderId);
+                    } else if ("REFUND".equalsIgnoreCase(event.getAction())) {
+                        boolean isFullyPaid = requestDataNode.path("isFullyPaid").asBoolean(false);
+                        if (!isFullyPaid) {
+                            shippingRepository.findByOrderId(orderId).ifPresent(shipping -> {
+                                if ("PENDING".equals(shipping.getStatus())) {
+                                    shipping.setStatus("RETENIDO");
+                                    shippingRepository.save(shipping);
+                                    log.info("Updated Shipping table (RETENIDO) for orderId: {}", orderId);
+                                }
+                            });
+                        }
+                    }
                 }
             }
 

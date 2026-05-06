@@ -23,7 +23,7 @@ public class OrderNormalEventConsumer {
     private final ShippingRepository shippingRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "order_status_changed_events", groupId = "order-normal-listener", containerFactory = "orderEventKafkaListenerContainerFactory")
+    @KafkaListener(topics = "order-events", groupId = "order-normal-listener", containerFactory = "orderEventKafkaListenerContainerFactory")
     public void consume(OrderEvent event) {
         log.info("Received Normal OrderEvent: {}", event);
         try {
