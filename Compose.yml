@@ -129,6 +129,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_EC2_METADATA_DISABLED=true
       - AWS_ENDPOINT_URL=http://localstack:4566
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     depends_on:
       - eurekaserver
       - mongodb
@@ -149,6 +150,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_EC2_METADATA_DISABLED=true
       - AWS_ENDPOINT_URL=http://localstack:4566
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     depends_on:
       - eurekaserver
       - mongodb
