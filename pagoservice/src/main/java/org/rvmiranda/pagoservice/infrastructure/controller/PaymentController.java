@@ -62,6 +62,20 @@ public class PaymentController {
             );
             kafkaTemplate.send("payment-events", successEvent);
 
+            if (isFullyPaid) {
+                // Evento exclusivo para visualización de hitos importantes (pago completo)
+                var fullPaymentEvent = new PaymentEvent(
+                        UUID.randomUUID().toString(),
+                        payment.getId(),
+                        "FULL_PAYMENT_REACHED",
+                        "SUCCESS",
+                        requestDataJson,
+                        null,
+                        null
+                );
+                kafkaTemplate.send("full_recieved_payments_events", fullPaymentEvent);
+            }
+
             return ResponseEntity.ok(GenericResponse.success(payment, "Pago procesado y evento enviado asíncronamente"));
         } catch (Exception e) {
             String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\"}",
