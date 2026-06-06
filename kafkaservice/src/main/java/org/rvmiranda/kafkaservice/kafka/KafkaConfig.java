@@ -54,6 +54,11 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic orderStatusChangedLegacyEventsTopic() {
+        return TopicBuilder.name("order-status-changed-events").partitions(1).replicas(1).build();
+    }
+
+    @Bean
     public NewTopic inventoryUpdateEventsTopic() {
         return TopicBuilder.name("inventory_update_events").partitions(1).replicas(1).build();
     }

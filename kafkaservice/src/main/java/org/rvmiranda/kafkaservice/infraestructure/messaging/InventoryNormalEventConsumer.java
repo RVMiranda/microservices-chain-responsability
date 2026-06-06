@@ -19,7 +19,7 @@ public class InventoryNormalEventConsumer {
     private final ProductHistoryRepository productHistoryRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "inventory_update_events", groupId = "inventory-normal-listener")
+    @KafkaListener(topics = "inventory_update_events", groupId = "inventory-normal-listener", containerFactory = "retryKafkaListenerContainerFactory")
     public void consume(String message) {
         log.info("Received Normal InventoryEvent: {}", message);
         try {
