@@ -20,7 +20,7 @@ public class PaymentEventConsumer {
     private final ObjectMapper objectMapper;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @KafkaListener(topics = "payment-events", groupId = "ordenservice-group")
+    @KafkaListener(topics = {"payment-events", "order-remaining-balance-events"}, groupId = "ordenservice-group")
     public void consumePaymentEvent(String message) {
         try {
             log.info("Evento de pago recibido en ordenservice: {}", message);
@@ -40,8 +40,9 @@ public class PaymentEventConsumer {
             // Revisar PaymentController.refundPayment: ahí mandamos orderId en requestDataJson
             
             if ("PROCESS_FULL".equals(action)) {
-                log.info("Pago completo detectado. Actualizando orden {} a PAGADA", orderId);
+                log.info("Pago completo detectado. Actualizando orden {} a PAGADA y saldo restante a 0.0", orderId);
                 orderService.updateOrderStatus(orderId, "PAGADA");
+                orderService.updateOrderRemainingBalance(orderId, 0.0);
                 emitStatusChangeEvent(orderId, "PAGADA");
             } else if ("PROCESS_PARTIAL".equals(action)) {
                 log.info("Pago parcial detectado. Actualizando orden {} a PAGO_PARCIAL", orderId);
@@ -54,6 +55,10 @@ public class PaymentEventConsumer {
                     orderService.updateOrderStatus(orderId, "REEMBOLSADA");
                     emitStatusChangeEvent(orderId, "REEMBOLSADA");
                 }
+            } else if ("UPDATE_REMAINING_BALANCE".equals(action)) {
+                Double remainingBalance = requestDataNode.path("remainingBalance").asDouble(0.0);
+                log.info("Actualizando saldo restante de la orden {} a {}", orderId, remainingBalance);
+                orderService.updateOrderRemainingBalance(orderId, remainingBalance);
             }
         } catch (Exception e) {
             log.error("Error procesando evento de pago en ordenservice: {}", e.getMessage(), e);
