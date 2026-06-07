@@ -85,6 +85,19 @@ public class PaymentService {
         return totalPaidSoFar >= order.getTotalPrice();
     }
 
+    public Double getRemainingBalance(String orderId) {
+        OrderDto order = orderClient.getOrderById(orderId).getData();
+        if (order == null) return 0.0;
+
+        List<Payment> previousPayments = paymentRepositoryPort.findAllByOrderId(orderId);
+        double totalPaidSoFar = previousPayments.stream()
+                .filter(p -> "EXITOSO".equals(p.getStatus()))
+                .mapToDouble(Payment::getAmount)
+                .sum();
+
+        return Math.max(0.0, order.getTotalPrice() - totalPaidSoFar);
+    }
+
     public List<Payment> getAllPayments() {
         return paymentRepositoryPort.findAll();
     }

@@ -40,16 +40,12 @@ public class PaymentController {
                     request.getUserEmail()
             );
 
-            // Obtener información de si está completamente pagado desde la validación del servicio o calculándolo.
-            // Necesitamos pasar isFullyPaid desde paymentService, por ahora asumimos que paymentService lo valida
-            // y agregaremos un campo transitorio o lanzamos la validación.
-            // Para simplificar, PaymentService lanzará error si se pasa, así que podríamos calcularlo aquí,
-            // pero mejor lo hacemos en un método de servicio.
             boolean isFullyPaid = paymentService.isOrderFullyPaid(request.getOrderId());
+            Double remainingBalance = paymentService.getRemainingBalance(request.getOrderId());
 
             // Publicar evento de éxito en tópico normal
-            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b}",
-                    request.getOrderId(), request.getPaymentMethod(), request.getAmount(), request.getUserEmail(), isFullyPaid);
+            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b, \"remainingBalance\":%s}",
+                    request.getOrderId(), request.getPaymentMethod(), request.getAmount(), request.getUserEmail(), isFullyPaid, remainingBalance);
 
             var successEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
@@ -61,6 +57,19 @@ public class PaymentController {
                     null
             );
             kafkaTemplate.send("payment-events", successEvent);
+
+            if (!isFullyPaid) {
+                var remainingBalanceEvent = new PaymentEvent(
+                        UUID.randomUUID().toString(),
+                        payment.getId(),
+                        "UPDATE_REMAINING_BALANCE",
+                        "SUCCESS",
+                        requestDataJson,
+                        null,
+                        null
+                );
+                kafkaTemplate.send("order-remaining-balance-events", remainingBalanceEvent);
+            }
 
             if (isFullyPaid) {
                 // Evento exclusivo para visualización de hitos importantes (pago completo)
@@ -130,11 +139,11 @@ public class PaymentController {
         try {
             Payment refundedPayment = paymentService.refundPayment(id);
             
-            // Check if still fully paid (probably false, or true if order was overpaid initially, but we don't allow overpay)
             boolean isFullyPaid = paymentService.isOrderFullyPaid(refundedPayment.getOrderId());
+            Double remainingBalance = paymentService.getRemainingBalance(refundedPayment.getOrderId());
             
-            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b}",
-                    refundedPayment.getOrderId(), refundedPayment.getPaymentMethod(), refundedPayment.getAmount(), refundedPayment.getUserEmail(), isFullyPaid);
+            String requestDataJson = String.format("{\"orderId\":\"%s\", \"paymentMethod\":\"%s\", \"amount\":%s, \"userEmail\":\"%s\", \"isFullyPaid\":%b, \"remainingBalance\":%s}",
+                    refundedPayment.getOrderId(), refundedPayment.getPaymentMethod(), refundedPayment.getAmount(), refundedPayment.getUserEmail(), isFullyPaid, remainingBalance);
 
             var successEvent = new PaymentEvent(
                     UUID.randomUUID().toString(),
@@ -146,6 +155,19 @@ public class PaymentController {
                     null
             );
             kafkaTemplate.send("payment-events", successEvent);
+
+            if (!isFullyPaid) {
+                var remainingBalanceEvent = new PaymentEvent(
+                        UUID.randomUUID().toString(),
+                        id,
+                        "UPDATE_REMAINING_BALANCE",
+                        "SUCCESS",
+                        requestDataJson,
+                        null,
+                        null
+                );
+                kafkaTemplate.send("order-remaining-balance-events", remainingBalanceEvent);
+            }
 
             return ResponseEntity.ok(GenericResponse.success(refundedPayment, "Reembolso procesado exitosamente"));
         } catch (Exception e) {
