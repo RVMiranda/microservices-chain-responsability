@@ -169,6 +169,16 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/{id}/saldo-restante")
+    public ResponseEntity<GenericResponse<Double>> getOrderRemainingBalance(@PathVariable String id) {
+        try {
+            Double remaining = orderService.getOrderRemainingBalance(id);
+            return ResponseEntity.ok(GenericResponse.success(remaining, "Saldo restante obtenido"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/usuario/{email}")
     public ResponseEntity<GenericResponse<List<Order>>> getOrdersByUserId(@PathVariable String email) {
         List<Order> orders = orderService.getOrdersByUserEmail(email);
