@@ -541,3 +541,48 @@ input:focus, select:focus, textarea:focus {
 .btn-secondary:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* Order Searches Grid */
+.search-bars-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .search-bars-grid {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: center;
+  }
+}
+
+.btn-clear-wide {
+  width: auto;
+  padding: 0.65rem 1.5rem;
+}
+
+/* Order Detail Grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Inline status modification styling */
+.inline-status-form {
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.payment-card {
+  border-left: 4px solid var(--accent-color);
+}
