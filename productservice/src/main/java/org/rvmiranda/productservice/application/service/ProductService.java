@@ -3,6 +3,8 @@ package org.rvmiranda.productservice.application.service;
 import lombok.RequiredArgsConstructor;
 import org.rvmiranda.productservice.domain.model.Product;
 import org.rvmiranda.productservice.domain.port.ProductRepositoryPort;
+import org.rvmiranda.productservice.infraestructure.client.OrderClient;
+import feign.FeignException;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
@@ -10,6 +12,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepositoryPort productRepositoryPort;
+    private final OrderClient orderClient;
 
     public Product createProduct(Product product) {
         return productRepositoryPort.save(product);
@@ -40,6 +43,17 @@ public class ProductService {
     public void deleteProduct(String id) {
         // Validamos que exista antes de borrar
         getProductById(id);
+
+        // Validar si el producto está asociado a alguna orden en ordenservice
+        try {
+            var response = orderClient.existsOrderByProductId(id);
+            if (response != null && response.getData() != null && response.getData()) {
+                throw new RuntimeException("Error: No se puede eliminar el producto porque está asociado a una o más órdenes.");
+            }
+        } catch (FeignException e) {
+            throw new RuntimeException("Error al verificar asociaciones del producto con órdenes: " + e.getMessage());
+        }
+
         productRepositoryPort.deleteById(id);
     }
 
