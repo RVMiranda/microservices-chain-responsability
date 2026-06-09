@@ -10,6 +10,16 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' }); // type: success | error
 
+  // Search by ID states
+  const [searchId, setSearchId] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchResultEmpty, setSearchResultEmpty] = useState(false);
+
+  // Detail view and edit states
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', description: '', price: '', stock: '' });
+
   // Form states
   const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '' });
   const [orderForm, setOrderForm] = useState({ productId: '', quantity: '', userEmail: '' });
@@ -67,6 +77,45 @@ export default function App() {
     }
   };
 
+  // Search by ID function
+  const handleSearchById = async (e) => {
+    e.preventDefault();
+    if (!searchId.trim()) {
+      showMsg('Ingresa un ID válido para buscar.', 'error');
+      return;
+    }
+    setLoading(true);
+    setSearchResultEmpty(false);
+    try {
+      const res = await fetch(`${API_BASE}/productos/${searchId.trim()}`);
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR' && data.data) {
+        setProducts([data.data]);
+        setSearchActive(true);
+        showMsg('Producto encontrado.');
+      } else {
+        setProducts([]);
+        setSearchActive(true);
+        setSearchResultEmpty(true);
+        showMsg('Producto no encontrado.', 'error');
+      }
+    } catch (err) {
+      setProducts([]);
+      setSearchActive(true);
+      setSearchResultEmpty(true);
+      showMsg('Producto no encontrado.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchId('');
+    setSearchActive(false);
+    setSearchResultEmpty(false);
+    fetchProducts();
+  };
+
   // Email Validation helper
   const isValidEmail = (email) => {
     if (!email.includes('@')) return false;
@@ -102,7 +151,7 @@ export default function App() {
         })
       });
       const data = await res.json();
-      if (res.ok && data.status !== 'ERROR') {
+      if (res.ok && data.status !== 'ERROR' && data.data) {
         showMsg(`Producto "${productForm.name}" creado con éxito.`);
         setProductForm({ name: '', description: '', price: '', stock: '' });
         fetchProducts();
@@ -126,7 +175,50 @@ export default function App() {
         showMsg(`Producto "${name}" eliminado exitosamente.`);
         fetchProducts();
       } else {
-        showMsg(data.message || 'El producto no puede ser eliminado.', 'error');
+        showMsg(data.message || 'El producto no puede ser eliminado por estar asociado a una orden.', 'error');
+      }
+    } catch (err) {
+      showMsg('Error al conectar con el servidor.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    const stockVal = parseInt(editForm.stock, 10);
+    const priceVal = parseFloat(editForm.price);
+
+    if (isNaN(stockVal) || stockVal <= 0) {
+      showMsg('El stock debe ser mayor a cero.', 'error');
+      return;
+    }
+    if (isNaN(priceVal) || priceVal <= 0) {
+      showMsg('El precio debe ser mayor a cero.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/productos/${selectedProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          description: editForm.description,
+          price: priceVal,
+          stock: stockVal
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR') {
+        showMsg('Producto actualizado correctamente.');
+        setIsEditing(false);
+        const updated = data.data || { ...selectedProduct, name: editForm.name, description: editForm.description, price: priceVal, stock: stockVal };
+        setSelectedProduct(updated);
+        fetchProducts();
+      } else {
+        showMsg(data.message || 'Error al actualizar el producto.', 'error');
       }
     } catch (err) {
       showMsg('Error al conectar con el servidor.', 'error');
@@ -215,10 +307,9 @@ export default function App() {
         showMsg('Pago procesado con éxito.');
         setPaymentForm({ orderId: '', amount: '', paymentMethod: 'CREDIT_CARD', userEmail: '' });
         
-        // Refresh orders and balance checks
         setTimeout(() => {
           fetchOrders();
-        }, 1500); // Small timeout to ensure Kafka consumers updated MongoDB
+        }, 1500);
       } else {
         showMsg(data.message || 'Error al procesar el pago.', 'error');
       }
@@ -237,7 +328,7 @@ export default function App() {
           <h1>Microservices Chain Control Center</h1>
         </div>
         <nav className="header-nav">
-          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>Productos</button>
+          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => { setActiveTab('products'); setSelectedProduct(null); setIsEditing(false); }}>Productos</button>
           <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => setActiveTab('orders')}>Órdenes</button>
           <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>Registrar Pago</button>
         </nav>
@@ -252,204 +343,365 @@ export default function App() {
 
       <main className="app-main">
         {activeTab === 'products' && (
-          <div className="tab-content fade-in">
-            <section className="form-section">
-              <h2>Añadir Producto</h2>
-              <form onSubmit={handleProductSubmit} className="minimal-form">
-                <div className="form-group">
-                  <label>Nombre del Producto</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. iPhone 15 Pro"
-                    value={productForm.name}
-                    onChange={e => setProductForm({ ...productForm, name: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Descripción</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Color titanio natural, 256GB"
-                    value={productForm.description}
-                    onChange={e => setProductForm({ ...productForm, description: e.target.value })}
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Precio ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="999.99"
-                      value={productForm.price}
-                      onChange={e => setProductForm({ ...productForm, price: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Stock Inicial</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="10"
-                      value={productForm.stock}
-                      onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <button type="submit" disabled={loading} className="btn btn-primary">
-                  {loading ? 'Creando...' : 'Crear Producto'}
+          <div className="tab-content-wrapper fade-in">
+            {selectedProduct ? (
+              // ── PRODUCT DETAIL & EDIT VIEW ──
+              <div className="detail-view-container">
+                <button 
+                  onClick={() => { setSelectedProduct(null); setIsEditing(false); }} 
+                  className="btn btn-secondary btn-back"
+                >
+                  ← Volver al Catálogo
                 </button>
-              </form>
-            </section>
-
-            <section className="table-section">
-              <h2>Catálogo de Productos</h2>
-              <div className="table-wrapper">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Nombre</th>
-                      <th>Descripción</th>
-                      <th>Precio</th>
-                      <th>Stock</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="empty-row">No hay productos registrados en el catálogo.</td>
-                      </tr>
-                    ) : (
-                      products.map(p => (
-                        <tr key={p.id}>
-                          <td className="bold">{p.name}</td>
-                          <td className="text-secondary">{p.description}</td>
-                          <td className="price-tag">${p.price.toFixed(2)}</td>
-                          <td>
-                            <span className={`badge ${p.stock > 0 ? 'stock-ok' : 'stock-empty'}`}>
-                              {p.stock} u.
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => handleDeleteProduct(p.id, p.name)}
-                              className="btn btn-danger btn-sm"
-                              disabled={loading}
-                            >
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                
+                <div className="detail-card">
+                  <h2>Detalle del Producto</h2>
+                  {!isEditing ? (
+                    <div className="detail-info">
+                      <div className="info-group">
+                        <label>ID del Producto</label>
+                        <p className="info-value code-id">{selectedProduct.id}</p>
+                      </div>
+                      <div className="info-group">
+                        <label>Nombre</label>
+                        <p className="info-value bold">{selectedProduct.name}</p>
+                      </div>
+                      <div className="info-group">
+                        <label>Descripción</label>
+                        <p className="info-value text-secondary">{selectedProduct.description}</p>
+                      </div>
+                      <div className="info-group">
+                        <label>Precio</label>
+                        <p className="info-value price-tag">${selectedProduct.price.toFixed(2)}</p>
+                      </div>
+                      <div className="info-group">
+                        <label>Stock Disponible</label>
+                        <p className="info-value">
+                          <span className={`badge ${selectedProduct.stock > 0 ? 'stock-ok' : 'stock-empty'}`}>
+                            {selectedProduct.stock} unidades
+                          </span>
+                        </p>
+                      </div>
+                      
+                      <div className="detail-actions">
+                        <button 
+                          onClick={() => {
+                            setIsEditing(true);
+                            setEditForm({
+                              name: selectedProduct.name,
+                              description: selectedProduct.description,
+                              price: selectedProduct.price.toString(),
+                              stock: selectedProduct.stock.toString()
+                            });
+                          }} 
+                          className="btn btn-primary"
+                        >
+                          Habilitar Edición
+                        </button>
+                        <button 
+                          onClick={() => {
+                            handleDeleteProduct(selectedProduct.id, selectedProduct.name);
+                            setSelectedProduct(null);
+                          }} 
+                          className="btn btn-danger"
+                          disabled={loading}
+                        >
+                          Eliminar Producto
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // ── PRODUCT EDIT FORM ──
+                    <form onSubmit={handleEditSubmit} className="minimal-form">
+                      <div className="form-group">
+                        <label>Nombre del Producto</label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.name}
+                          onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Descripción</label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.description}
+                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Precio ($)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={editForm.price}
+                            onChange={e => setEditForm({ ...editForm, price: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Stock</label>
+                          <input
+                            type="number"
+                            required
+                            value={editForm.stock}
+                            onChange={e => setEditForm({ ...editForm, stock: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="detail-actions">
+                        <button type="submit" disabled={loading} className="btn btn-primary">
+                          {loading ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setIsEditing(false)} 
+                          className="btn btn-secondary"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
-            </section>
+            ) : (
+              // ── MAIN CATALOGUE VIEW ──
+              <div className="tab-content">
+                <section className="form-section">
+                  <h2>Añadir Producto</h2>
+                  <form onSubmit={handleProductSubmit} className="minimal-form">
+                    <div className="form-group">
+                      <label>Nombre del Producto</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. iPhone 15 Pro"
+                        value={productForm.name}
+                        onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Descripción</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Color titanio natural, 256GB"
+                        value={productForm.description}
+                        onChange={e => setProductForm({ ...productForm, description: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Precio ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          placeholder="999.99"
+                          value={productForm.price}
+                          onChange={e => setProductForm({ ...productForm, price: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Stock Inicial</label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="10"
+                          value={productForm.stock}
+                          onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" disabled={loading} className="btn btn-primary">
+                      {loading ? 'Creando...' : 'Crear Producto'}
+                    </button>
+                  </form>
+                </section>
+
+                <section className="table-section">
+                  <h2>Catálogo de Productos</h2>
+
+                  {/* ── SEARCH BAR BY ID ── */}
+                  <div className="search-bar-container">
+                    <form onSubmit={handleSearchById} className="search-form">
+                      <input
+                        type="text"
+                        placeholder="Buscar producto por ID..."
+                        value={searchId}
+                        onChange={e => setSearchId(e.target.value)}
+                      />
+                      <button type="submit" className="btn btn-primary btn-search">Buscar</button>
+                      {searchActive && (
+                        <button type="button" onClick={handleClearSearch} className="btn btn-secondary btn-clear">Limpiar</button>
+                      )}
+                    </form>
+                  </div>
+
+                  <div className="table-wrapper">
+                    <table className="custom-table table-clickable">
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>Descripción</th>
+                          <th>Precio</th>
+                          <th>Stock</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {products.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="empty-row">
+                              {searchResultEmpty ? 'Producto no encontrado.' : 'No hay productos registrados en el catálogo.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          products.map(p => (
+                            <tr 
+                              key={p.id} 
+                              onClick={() => {
+                                setSelectedProduct(p);
+                                setIsEditing(false);
+                              }}
+                              title="Haga click para ver detalles y editar"
+                            >
+                              <td className="bold">{p.name}</td>
+                              <td className="text-secondary">{p.description}</td>
+                              <td className="price-tag">${p.price.toFixed(2)}</td>
+                              <td>
+                                <span className={`badge ${p.stock > 0 ? 'stock-ok' : 'stock-empty'}`}>
+                                  {p.stock} u.
+                                </span>
+                              </td>
+                              <td>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Evita navegar al detalle
+                                    handleDeleteProduct(p.id, p.name);
+                                  }}
+                                  className="btn btn-danger btn-sm"
+                                  disabled={loading}
+                                >
+                                  Eliminar
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'orders' && (
-          <div className="tab-content fade-in">
-            <section className="form-section">
-              <h2>Registrar Nueva Orden</h2>
-              <form onSubmit={handleOrderSubmit} className="minimal-form">
-                <div className="form-group">
-                  <label>Seleccionar Producto</label>
-                  <select
-                    required
-                    value={orderForm.productId}
-                    onChange={e => setOrderForm({ ...orderForm, productId: e.target.value })}
-                  >
-                    <option value="">-- Selecciona un Producto --</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - ${p.price.toFixed(2)} (Stock: {p.stock})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-row">
+          <div className="tab-content-wrapper fade-in">
+            <div className="tab-content">
+              <section className="form-section">
+                <h2>Registrar Nueva Orden</h2>
+                <form onSubmit={handleOrderSubmit} className="minimal-form">
                   <div className="form-group">
-                    <label>Cantidad</label>
-                    <input
-                      type="number"
+                    <label>Seleccionar Producto</label>
+                    <select
                       required
-                      placeholder="1"
-                      value={orderForm.quantity}
-                      onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })}
-                    />
+                      value={orderForm.productId}
+                      onChange={e => setOrderForm({ ...orderForm, productId: e.target.value })}
+                    >
+                      <option value="">-- Selecciona un Producto --</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} - ${p.price.toFixed(2)} (Stock: {p.stock})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="form-group">
-                    <label>Email de Usuario</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="cliente@correo.com"
-                      value={orderForm.userEmail}
-                      onChange={e => setOrderForm({ ...orderForm, userEmail: e.target.value })}
-                    />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Cantidad</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="1"
+                        value={orderForm.quantity}
+                        onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Email de Usuario</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="cliente@correo.com"
+                        value={orderForm.userEmail}
+                        onChange={e => setOrderForm({ ...orderForm, userEmail: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
-                <button type="submit" disabled={loading} className="btn btn-primary">
-                  {loading ? 'Creando...' : 'Crear Orden'}
-                </button>
-              </form>
-            </section>
+                  <button type="submit" disabled={loading} className="btn btn-primary">
+                    {loading ? 'Creando...' : 'Crear Orden'}
+                  </button>
+                </form>
+              </section>
 
-            <section className="table-section">
-              <h2>Historial de Órdenes</h2>
-              <div className="table-wrapper">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Orden ID</th>
-                      <th>Producto</th>
-                      <th>Cant.</th>
-                      <th>Total</th>
-                      <th>Estado</th>
-                      <th>Saldo Restante</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.length === 0 ? (
+              <section className="table-section">
+                <h2>Historial de Órdenes</h2>
+                <div className="table-wrapper">
+                  <table className="custom-table">
+                    <thead>
                       <tr>
-                        <td colSpan="6" className="empty-row">No hay órdenes registradas.</td>
+                        <th>Orden ID</th>
+                        <th>Producto</th>
+                        <th>Cant.</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Saldo Restante</th>
                       </tr>
-                    ) : (
-                      orders.map(o => {
-                        const balance = orderBalances[o.id];
-                        return (
-                          <tr key={o.id}>
-                            <td className="code-id">{o.id.substring(0, 8)}...</td>
-                            <td className="bold">{o.productName}</td>
-                            <td>{o.quantity}</td>
-                            <td className="price-tag">${o.totalPrice.toFixed(2)}</td>
-                            <td>
-                              <span className={`status-badge ${o.status.toLowerCase()}`}>
-                                {o.status}
-                              </span>
-                            </td>
-                            <td className="price-tag bold">
-                              {balance !== undefined ? `$${balance.toFixed(2)}` : 'Cargando...'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                    </thead>
+                    <tbody>
+                      {orders.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="empty-row">No hay órdenes registradas.</td>
+                        </tr>
+                      ) : (
+                        orders.map(o => {
+                          const balance = orderBalances[o.id];
+                          return (
+                            <tr key={o.id}>
+                              <td className="code-id">{o.id.substring(0, 8)}...</td>
+                              <td className="bold">{o.productName}</td>
+                              <td>{o.quantity}</td>
+                              <td className="price-tag">${o.totalPrice.toFixed(2)}</td>
+                              <td>
+                                <span className={`status-badge ${o.status.toLowerCase()}`}>
+                                  {o.status}
+                                </span>
+                              </td>
+                              <td className="price-tag bold">
+                                {balance !== undefined ? `$${balance.toFixed(2)}` : 'Cargando...'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
           </div>
         )}
 
         {activeTab === 'payments' && (
-          <div className="tab-content fade-in">
+          <div className="tab-content-wrapper fade-in">
             <section className="form-section central-form">
               <h2>Registrar Pago para Orden</h2>
               <form onSubmit={handlePaymentSubmit} className="minimal-form">
