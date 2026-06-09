@@ -11,4 +11,5 @@ public interface OrderRepositoryPort {
     List<Order> findAll();
     List<Order> findByUserEmailAndProductId(String userEmail, String productId);
     List<Order> findByUserEmail(String userEmail);
+    List<Order> findByProductId(String productId);
 }

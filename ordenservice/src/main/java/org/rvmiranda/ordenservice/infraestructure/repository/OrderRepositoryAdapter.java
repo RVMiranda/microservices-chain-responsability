@@ -58,6 +58,13 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Order> findByProductId(String productId) {
+        return mongoRepository.findByProductId(productId).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
     private Order toDomain(OrderEntity entity) {
         return Order.builder()
                 .id(entity.getId())

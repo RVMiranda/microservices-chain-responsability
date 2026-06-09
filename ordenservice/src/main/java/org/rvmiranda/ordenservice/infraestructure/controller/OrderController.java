@@ -33,6 +33,10 @@ public class OrderController {
             }
             ProductDto product = productResponse.getData();
             
+            if (product.getStock() < request.getQuantity()) {
+                return ResponseEntity.badRequest().body(GenericResponse.error("Error: Stock insuficiente. Stock disponible: " + product.getStock()));
+            }
+            
             String productName = product.getName();
             Double totalPrice = product.getPrice() * request.getQuantity();
 
@@ -174,6 +178,16 @@ public class OrderController {
         try {
             Double remaining = orderService.getOrderRemainingBalance(id);
             return ResponseEntity.ok(GenericResponse.success(remaining, "Saldo restante obtenido"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/producto/{productId}/exists")
+    public ResponseEntity<GenericResponse<Boolean>> existsOrderByProductId(@PathVariable String productId) {
+        try {
+            boolean exists = orderService.existsOrderByProductId(productId);
+            return ResponseEntity.ok(GenericResponse.success(exists, "Existencia de órdenes verificada"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
         }

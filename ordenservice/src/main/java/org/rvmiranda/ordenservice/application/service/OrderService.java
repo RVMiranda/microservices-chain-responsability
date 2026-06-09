@@ -88,4 +88,8 @@ public class OrderService {
                     }
                 });
     }
+
+    public boolean existsOrderByProductId(String productId) {
+        return !orderRepositoryPort.findByProductId(productId).isEmpty();
+    }
 }

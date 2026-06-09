@@ -7,4 +7,5 @@ import java.util.List;
 public interface SpringDataMongoOrderRepository extends MongoRepository<OrderEntity, String> {
     List<OrderEntity> findByUserEmailAndProductId(String userEmail, String productId);
     List<OrderEntity> findByUserEmail(String userEmail);
+    List<OrderEntity> findByProductId(String productId);
 }
