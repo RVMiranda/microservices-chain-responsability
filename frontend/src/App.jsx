@@ -33,6 +33,23 @@ export default function App() {
   const [newOrderStatus, setNewOrderStatus] = useState('CREADA');
   const [inlinePayment, setInlinePayment] = useState({ amount: '', paymentMethod: 'CREDIT_CARD' });
 
+  // Payment History, Detail & Refund states
+  const [payments, setPayments] = useState([]);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [searchPaymentId, setSearchPaymentId] = useState('');
+  const [searchPaymentOrderId, setSearchPaymentOrderId] = useState('');
+  const [searchPaymentsActive, setSearchPaymentsActive] = useState(false);
+  const [searchPaymentsResultEmpty, setSearchPaymentsResultEmpty] = useState(false);
+  const [searchPaymentsEmptyMessage, setSearchPaymentsEmptyMessage] = useState('');
+
+  // Shipping (Envíos Programados) states
+  const [shippings, setShippings] = useState([]);
+  const [searchShippingOrderId, setSearchShippingOrderId] = useState('');
+  const [searchShippingEmail, setSearchShippingEmail] = useState('');
+  const [searchShippingsActive, setSearchShippingsActive] = useState(false);
+  const [searchShippingsResultEmpty, setSearchShippingsResultEmpty] = useState(false);
+  const [searchShippingsEmptyMessage, setSearchShippingsEmptyMessage] = useState('');
+
   // Form states
   const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '' });
   const [orderForm, setOrderForm] = useState({ productId: '', quantity: '', userEmail: '' });
@@ -42,6 +59,8 @@ export default function App() {
   useEffect(() => {
     fetchProducts();
     fetchOrders();
+    fetchPayments();
+    fetchShippings();
   }, []);
 
   const showMsg = (text, type = 'success') => {
@@ -497,6 +516,242 @@ export default function App() {
     }
   };
 
+  const fetchPayments = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/pagos`);
+      const data = await res.json();
+      if (data.status === 'SUCCESS' || data.data) {
+        setPayments(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    }
+  };
+
+  const handleSearchPaymentById = async (e) => {
+    e.preventDefault();
+    if (!searchPaymentId.trim()) {
+      showMsg('Ingresa un ID de pago válido.', 'error');
+      return;
+    }
+    setLoading(true);
+    setSearchPaymentsResultEmpty(false);
+    setSearchPaymentsEmptyMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/pagos/${searchPaymentId.trim()}`);
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR' && data.data) {
+        setPayments([data.data]);
+        setSearchPaymentsActive(true);
+        showMsg('Pago encontrado.');
+      } else {
+        setPayments([]);
+        setSearchPaymentsActive(true);
+        setSearchPaymentsResultEmpty(true);
+        setSearchPaymentsEmptyMessage('Pago no encontrado.');
+        showMsg('Pago no encontrado.', 'error');
+      }
+    } catch (err) {
+      setPayments([]);
+      setSearchPaymentsActive(true);
+      setSearchPaymentsResultEmpty(true);
+      setSearchPaymentsEmptyMessage('Pago no encontrado.');
+      showMsg('Pago no encontrado.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchPaymentByOrderId = async (e) => {
+    e.preventDefault();
+    if (!searchPaymentOrderId.trim()) {
+      showMsg('Ingresa un ID de orden válido.', 'error');
+      return;
+    }
+    setLoading(true);
+    setSearchPaymentsResultEmpty(false);
+    setSearchPaymentsEmptyMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/pagos/orden/${searchPaymentOrderId.trim()}`);
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR' && data.data) {
+        const list = data.data || [];
+        setPayments(list);
+        setSearchPaymentsActive(true);
+        if (list.length === 0) {
+          setSearchPaymentsResultEmpty(true);
+          setSearchPaymentsEmptyMessage('No hay pagos registrados para esta orden.');
+        }
+        showMsg(`Búsqueda completada. Encontrados: ${list.length}`);
+      } else {
+        setPayments([]);
+        setSearchPaymentsActive(true);
+        setSearchPaymentsResultEmpty(true);
+        setSearchPaymentsEmptyMessage('No hay pagos registrados para esta orden.');
+        showMsg('No se encontraron pagos.', 'error');
+      }
+    } catch (err) {
+      setPayments([]);
+      setSearchPaymentsActive(true);
+      setSearchPaymentsResultEmpty(true);
+      setSearchPaymentsEmptyMessage('No hay pagos registrados para esta orden.');
+      showMsg('No se encontraron pagos.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearPaymentsSearch = () => {
+    setSearchPaymentId('');
+    setSearchPaymentOrderId('');
+    setSearchPaymentsActive(false);
+    setSearchPaymentsResultEmpty(false);
+    setSearchPaymentsEmptyMessage('');
+    fetchPayments();
+  };
+
+  const handleRefundPayment = async (id) => {
+    if (!confirm('¿Estás seguro de solicitar el reembolso de este pago?')) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/pagos/${id}/reembolso`, {
+        method: 'PUT'
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR' && data.data) {
+        showMsg('Reembolso procesado exitosamente.');
+        setSelectedPayment(data.data);
+        
+        // Refresh everything
+        fetchPayments();
+        fetchOrders();
+        fetchProducts();
+      } else {
+        showMsg(data.message || 'Error al procesar el reembolso.', 'error');
+      }
+    } catch (err) {
+      showMsg('Error al conectar con el servidor.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchShippings = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/envios`);
+      const data = await res.json();
+      if (data.status === 'SUCCESS' || data.data) {
+        setShippings(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching shippings:', err);
+    }
+  };
+
+  const handleSearchShippingByOrderId = async (e) => {
+    e.preventDefault();
+    if (!searchShippingOrderId.trim()) {
+      showMsg('Ingresa un ID de orden válido.', 'error');
+      return;
+    }
+    setLoading(true);
+    setSearchShippingsResultEmpty(false);
+    setSearchShippingsEmptyMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/envios/orden/${searchShippingOrderId.trim()}`);
+      const data = await res.json();
+      if (res.ok && data.status !== 'ERROR' && data.data) {
+        const list = data.data || [];
+        setShippings(list);
+        setSearchShippingsActive(true);
+        if (list.length === 0) {
+          setSearchShippingsResultEmpty(true);
+          setSearchShippingsEmptyMessage('No hay envíos registrados para esta orden.');
+        }
+        showMsg(`Búsqueda completada. Encontrados: ${list.length}`);
+      } else {
+        setShippings([]);
+        setSearchShippingsActive(true);
+        setSearchShippingsResultEmpty(true);
+        setSearchShippingsEmptyMessage('No hay envíos registrados para esta orden.');
+        showMsg('No se encontraron envíos.', 'error');
+      }
+    } catch (err) {
+      setShippings([]);
+      setSearchShippingsActive(true);
+      setSearchShippingsResultEmpty(true);
+      setSearchShippingsEmptyMessage('No hay envíos registrados para esta orden.');
+      showMsg('No se encontraron envíos.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchShippingByEmail = async (e) => {
+    e.preventDefault();
+    if (!searchShippingEmail.trim()) {
+      showMsg('Ingresa un correo de usuario.', 'error');
+      return;
+    }
+    if (!isValidEmail(searchShippingEmail)) {
+      showMsg('Formato de correo no válido.', 'error');
+      return;
+    }
+    setLoading(true);
+    setSearchShippingsResultEmpty(false);
+    setSearchShippingsEmptyMessage('');
+    try {
+      // 1. Get user orders
+      const orderRes = await fetch(`${API_BASE}/ordenes/usuario/${searchShippingEmail.trim()}`);
+      const orderData = await orderRes.json();
+      const userOrders = orderData.data || [];
+      
+      if (userOrders.length === 0) {
+        setShippings([]);
+        setSearchShippingsActive(true);
+        setSearchShippingsResultEmpty(true);
+        setSearchShippingsEmptyMessage('No hay envíos registrados para este correo.');
+        showMsg('No se encontraron órdenes para este correo.', 'error');
+        return;
+      }
+      
+      const orderIds = userOrders.map(o => o.id);
+      
+      // 2. Fetch all shippings from postgres
+      const shipRes = await fetch(`${API_BASE}/envios`);
+      const shipData = await shipRes.json();
+      const allShippings = shipData.data || [];
+      
+      // 3. Filter shippings in memory
+      const filtered = allShippings.filter(s => orderIds.includes(s.orderId));
+      
+      setShippings(filtered);
+      setSearchShippingsActive(true);
+      if (filtered.length === 0) {
+        setSearchShippingsResultEmpty(true);
+        setSearchShippingsEmptyMessage('No hay envíos registrados para este correo.');
+      }
+      showMsg(`Búsqueda completada. Encontrados: ${filtered.length}`);
+    } catch (err) {
+      setShippings([]);
+      setSearchShippingsActive(true);
+      setSearchShippingsResultEmpty(true);
+      setSearchShippingsEmptyMessage('No hay envíos registrados para este correo.');
+      showMsg('Error al buscar envíos por correo.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearShippingsSearch = () => {
+    setSearchShippingOrderId('');
+    setSearchShippingEmail('');
+    setSearchShippingsActive(false);
+    setSearchShippingsResultEmpty(false);
+    setSearchShippingsEmptyMessage('');
+    fetchShippings();
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -505,9 +760,11 @@ export default function App() {
           <h1>Microservices Chain Control Center</h1>
         </div>
         <nav className="header-nav">
-          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => { setActiveTab('products'); setSelectedProduct(null); setSelectedOrder(null); setIsEditing(false); }}>Productos</button>
-          <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => { setActiveTab('orders'); setSelectedProduct(null); setSelectedOrder(null); setIsEditingOrderStatus(false); }}>Órdenes</button>
-          <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => { setActiveTab('payments'); setSelectedProduct(null); setSelectedOrder(null); }}>Registrar Pago</button>
+          <button className={activeTab === 'products' ? 'active' : ''} onClick={() => { setActiveTab('products'); setSelectedProduct(null); setSelectedOrder(null); setSelectedPayment(null); setIsEditing(false); }}>Productos</button>
+          <button className={activeTab === 'orders' ? 'active' : ''} onClick={() => { setActiveTab('orders'); setSelectedProduct(null); setSelectedOrder(null); setSelectedPayment(null); setIsEditingOrderStatus(false); }}>Órdenes</button>
+          <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => { setActiveTab('payments'); setSelectedProduct(null); setSelectedOrder(null); setSelectedPayment(null); }}>Registrar Pago</button>
+          <button className={activeTab === 'payments_history' ? 'active' : ''} onClick={() => { setActiveTab('payments_history'); setSelectedProduct(null); setSelectedOrder(null); setSelectedPayment(null); handleClearPaymentsSearch(); }}>Historial de Pagos</button>
+          <button className={activeTab === 'shippings_history' ? 'active' : ''} onClick={() => { setActiveTab('shippings_history'); setSelectedProduct(null); setSelectedOrder(null); setSelectedPayment(null); handleClearShippingsSearch(); }}>Envíos Programados</button>
         </nav>
       </header>
 
@@ -1116,6 +1373,233 @@ export default function App() {
                 </button>
               </form>
             </section>
+          </div>
+        )}
+
+        {activeTab === 'payments_history' && (
+          <div className="tab-content-wrapper fade-in">
+            {selectedPayment ? (
+              // ── PAYMENT DETAIL VIEW ──
+              <div className="detail-view-container">
+                <button 
+                  onClick={() => { setSelectedPayment(null); }} 
+                  className="btn btn-secondary btn-back"
+                >
+                  ← Volver al Historial
+                </button>
+                
+                <div className="detail-card">
+                  <h2>Detalle del Pago</h2>
+                  <div className="detail-info">
+                    <div className="info-group">
+                      <label>ID del Pago</label>
+                      <p className="info-value code-id">{selectedPayment.id}</p>
+                    </div>
+                    <div className="info-group">
+                      <label>ID de la Orden</label>
+                      <p className="info-value code-id">{selectedPayment.orderId}</p>
+                    </div>
+                    <div className="info-group">
+                      <label>Email de Usuario</label>
+                      <p className="info-value text-secondary">{selectedPayment.userEmail}</p>
+                    </div>
+                    <div className="info-group">
+                      <label>Monto</label>
+                      <p className="info-value price-tag">${selectedPayment.amount.toFixed(2)}</p>
+                    </div>
+                    <div className="info-group">
+                      <label>Método de Pago</label>
+                      <p className="info-value bold">{selectedPayment.paymentMethod}</p>
+                    </div>
+                    <div className="info-group">
+                      <label>Estado del Pago</label>
+                      <div className="info-value">
+                        <span className={`status-badge ${selectedPayment.status.toLowerCase()}`}>
+                          {selectedPayment.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="info-group">
+                      <label>Procesado El</label>
+                      <p className="info-value text-secondary">{new Date(selectedPayment.processedAt).toLocaleString()}</p>
+                    </div>
+                    
+                    <div className="detail-actions">
+                      <button 
+                        onClick={() => handleRefundPayment(selectedPayment.id)} 
+                        className="btn btn-danger"
+                        disabled={loading || selectedPayment.status === 'REEMBOLSADO'}
+                      >
+                        {selectedPayment.status === 'REEMBOLSADO' ? 'Pago Reembolsado' : 'Solicitar Reembolso'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // ── MAIN PAYMENTS LIST VIEW ──
+              <div className="tab-content">
+                <section className="table-section">
+                  <h2>Historial de Pagos</h2>
+
+                  {/* ── DOUBLE SEARCH BAR (PAYMENT ID & ORDER ID) ── */}
+                  <div className="search-bars-grid">
+                    <form onSubmit={handleSearchPaymentById} className="search-form">
+                      <input
+                        type="text"
+                        placeholder="Buscar por ID de Pago..."
+                        value={searchPaymentId}
+                        onChange={e => setSearchPaymentId(e.target.value)}
+                      />
+                      <button type="submit" className="btn btn-primary btn-search">Buscar Pago ID</button>
+                    </form>
+
+                    <form onSubmit={handleSearchPaymentByOrderId} className="search-form">
+                      <input
+                        type="text"
+                        placeholder="Buscar por ID de Orden..."
+                        value={searchPaymentOrderId}
+                        onChange={e => setSearchPaymentOrderId(e.target.value)}
+                      />
+                      <button type="submit" className="btn btn-primary btn-search">Buscar Orden ID</button>
+                    </form>
+
+                    {searchPaymentsActive && (
+                      <button type="button" onClick={handleClearPaymentsSearch} className="btn btn-secondary btn-clear-wide">
+                        Limpiar Filtros
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="table-wrapper">
+                    <table className="custom-table table-clickable">
+                      <thead>
+                        <tr>
+                          <th>Pago ID</th>
+                          <th>Orden ID</th>
+                          <th>Email</th>
+                          <th>Monto</th>
+                          <th>Método</th>
+                          <th>Estado</th>
+                          <th>Fecha</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.length === 0 ? (
+                          <tr>
+                            <td colSpan="7" className="empty-row">
+                              {searchPaymentsResultEmpty ? searchPaymentsEmptyMessage : 'No hay pagos registrados.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          payments.map(p => (
+                            <tr 
+                              key={p.id}
+                              onClick={() => setSelectedPayment(p)}
+                              title="Haga click para ver detalles y gestionar reembolso"
+                            >
+                              <td className="code-id">{p.id.substring(0, 8)}...</td>
+                              <td className="code-id">{p.orderId.substring(0, 8)}...</td>
+                              <td className="text-secondary">{p.userEmail}</td>
+                              <td className="price-tag">${p.amount.toFixed(2)}</td>
+                              <td>{p.paymentMethod}</td>
+                              <td>
+                                <span className={`status-badge ${p.status.toLowerCase()}`}>
+                                  {p.status}
+                                </span>
+                              </td>
+                              <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
+                                {new Date(p.processedAt).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'shippings_history' && (
+          <div className="tab-content-wrapper fade-in">
+            <div className="tab-content">
+              <section className="table-section">
+                <h2>Envíos Programados (Postgres)</h2>
+
+                {/* ── DOUBLE SEARCH BAR (ORDER ID & EMAIL) ── */}
+                <div className="search-bars-grid">
+                  <form onSubmit={handleSearchShippingByOrderId} className="search-form">
+                    <input
+                      type="text"
+                      placeholder="Buscar por ID de Orden..."
+                      value={searchShippingOrderId}
+                      onChange={e => setSearchShippingOrderId(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary btn-search">Buscar Orden ID</button>
+                  </form>
+
+                  <form onSubmit={handleSearchShippingByEmail} className="search-form">
+                    <input
+                      type="text"
+                      placeholder="Buscar por Email de Usuario..."
+                      value={searchShippingEmail}
+                      onChange={e => setSearchShippingEmail(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary btn-search">Buscar Email</button>
+                  </form>
+
+                  {searchShippingsActive && (
+                    <button type="button" onClick={handleClearShippingsSearch} className="btn btn-secondary btn-clear-wide">
+                      Limpiar Filtros
+                    </button>
+                  )}
+                </div>
+
+                <div className="table-wrapper">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Envío ID</th>
+                        <th>Orden ID</th>
+                        <th>Estado</th>
+                        <th>Fecha de Creación</th>
+                        <th>Fecha de Envío</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shippings.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="empty-row">
+                            {searchShippingsResultEmpty ? searchShippingsEmptyMessage : 'No hay envíos programados registrados.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        shippings.map(s => (
+                          <tr key={s.id}>
+                            <td className="code-id">{s.id.substring(0, 8)}...</td>
+                            <td className="code-id">{s.orderId.substring(0, 8)}...</td>
+                            <td>
+                              <span className={`status-badge ${s.status.toLowerCase()}`}>
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
+                              {s.createdAt ? new Date(s.createdAt).toLocaleString() : 'N/A'}
+                            </td>
+                            <td className="text-secondary" style={{ fontSize: '0.8rem' }}>
+                              {s.processedAt ? new Date(s.processedAt).toLocaleString() : 'Pendiente de Procesamiento'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
           </div>
         )}
       </main>
