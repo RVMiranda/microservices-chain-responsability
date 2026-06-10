@@ -127,6 +127,22 @@ export default function PaymentsHistoryView({ showMsg }) {
     setLoading(true);
     setCurrentPage(1);
     try {
+      // Verificar si la orden ya fue enviada
+      const resEnvio = await fetch(`${API_BASE}/envios/orden/${selectedPayment.orderId}`);
+      const dataEnvio = await resEnvio.json();
+      if (resEnvio.ok && dataEnvio.status !== 'ERROR' && dataEnvio.data && dataEnvio.data.length > 0) {
+        const shipping = dataEnvio.data[0];
+        if (shipping.status && shipping.status.toUpperCase() === 'SHIPPED') {
+          showMsg('Lo sentimos, tu orden ya fue enviada y no puede ser reembolsada', 'error');
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error al verificar el envío:', err);
+    }
+
+    try {
       const res = await fetch(`${API_BASE}/pagos/${id}/reembolso`, {
         method: 'PUT'
       });
