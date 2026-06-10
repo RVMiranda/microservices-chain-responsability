@@ -33,6 +33,11 @@ spring:
           predicates:
             - Path=/pagos/**
 
+        - id: envios-route
+          uri: lb://kafkaservice
+          predicates:
+            - Path=/envios/**
+
 eureka:
   client:
     service-url:
