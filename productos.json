@@ -1,0 +1,71 @@
+[{
+	"_id": {
+		"$oid": "69fb9e3b26777ff825c775ed"
+	},
+	"name": "PlayStation 5 Pro",
+	"description": "Consola Digital de Videojuegos",
+	"price": 11500.0,
+	"stock": 17,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "69fd41e1f4fad8ced2ff33ba"
+	},
+	"name": "Teclado Mecánico Hyper X",
+	"description": "Teclado gamer mecanico 60%",
+	"price": 3200.0,
+	"stock": 17,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "6a286daf183808bb0773363a"
+	},
+	"name": "Control Gamesir 7",
+	"description": "Control alambrico anti drift, gamesir 7, compatible con xbox, pc, nintendo, android y ios.",
+	"price": 799.0,
+	"stock": 9,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "6a291204133d61842fd93627"
+	},
+	"name": "Control Gamesir 7 Pro",
+	"description": "Control inalámbrico anti drift, compatible con consola xbox, pc, nintendo, android y iOS.",
+	"price": 1400.0,
+	"stock": 10,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "6a291235133d61842fd93628"
+	},
+	"name": "Xbox Series S",
+	"description": "Consola de videojuegos digital, almacenamiento SSD de 512 GB",
+	"price": 7900.0,
+	"stock": 20,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "6a291269133d61842fd93629"
+	},
+	"name": "Xbox Series X",
+	"description": "Consola de videojuegos, con lector de discos y blueray, almacenamiento SSD de 1 TB",
+	"price": 11200.0,
+	"stock": 15,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+},
+{
+	"_id": {
+		"$oid": "6a2912a6133d61842fd9362a"
+	},
+	"name": "Monitor Samsung G4",
+	"description": "Monitor con pantalla OLED de 27 pulgadas en resolución 2K",
+	"price": 6400.0,
+	"stock": 16,
+	"_class": "org.rvmiranda.productservice.infraestructure.repository.ProductEntity"
+}]
+

@@ -1,0 +1,56 @@
+[{
+	"_id": {
+		"$oid": "6a24bb1d2c600b0327dedb06"
+	},
+	"orderId": "6a24bb1d2c600b0327dedb05",
+	"remainingBalance": 0.0,
+	"updatedAt": {
+		"$date": "2026-06-07T00:39:48.262Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderBalanceEntity"
+},
+{
+	"_id": {
+		"$oid": "6a28c0728537da8aa3dfd0db"
+	},
+	"orderId": "6a28c0728537da8aa3dfd0da",
+	"remainingBalance": 0.0,
+	"updatedAt": {
+		"$date": "2026-06-10T01:41:45.502Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderBalanceEntity"
+},
+{
+	"_id": {
+		"$oid": "6a2901e900669002ba6f3a77"
+	},
+	"orderId": "6a2901e900669002ba6f3a76",
+	"remainingBalance": 0.0,
+	"updatedAt": {
+		"$date": "2026-06-10T06:21:00.591Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderBalanceEntity"
+},
+{
+	"_id": {
+		"$oid": "6a29040700669002ba6f3a78"
+	},
+	"orderId": "69fbc37b4f644808a19579fe",
+	"remainingBalance": 11500.0,
+	"updatedAt": {
+		"$date": "2026-06-10T06:28:58.967Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderBalanceEntity"
+},
+{
+	"_id": {
+		"$oid": "6a29047000669002ba6f3a79"
+	},
+	"orderId": "69fb9e5be8b47dd92d6a5336",
+	"remainingBalance": 5980.0,
+	"updatedAt": {
+		"$date": "2026-06-10T06:30:15.613Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderBalanceEntity"
+}]
+

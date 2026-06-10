@@ -1,0 +1,136 @@
+[{
+	"_id": {
+		"$oid": "69fb9e5be8b47dd92d6a5336"
+	},
+	"productId": "69fb9e3b26777ff825c775ed",
+	"productName": "Teclado Mecánico Logitech G Pro X",
+	"userEmail": "Luis@modelo.com",
+	"quantity": 2,
+	"totalPrice": 5980.0,
+	"status": "CANCELADA",
+	"createdAt": {
+		"$date": "2026-05-06T20:02:35.316Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "69fbc37b4f644808a19579fe"
+	},
+	"productId": "69fb9e3b26777ff825c775ed",
+	"productName": "PlayStation 5 Pro",
+	"userEmail": "Luis@modelo.com",
+	"quantity": 1,
+	"totalPrice": 11500.0,
+	"status": "REEMBOLSADA",
+	"createdAt": {
+		"$date": "2026-05-06T22:40:59.747Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "69fbcbc296f1d699860b074e"
+	},
+	"productId": "69fb9e3b26777ff825c775ed",
+	"productName": "PlayStation 5 Pro",
+	"userEmail": "Rafa@modelo.com",
+	"quantity": 1,
+	"totalPrice": 11500.0,
+	"status": "CANCELADA",
+	"createdAt": {
+		"$date": "2026-05-06T23:16:18.101Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "69fd377c96f1d699860b074f"
+	},
+	"productId": "69fb9e3b26777ff825c775ed",
+	"productName": "PlayStation 5 Pro",
+	"userEmail": "Rafa@modelo.com",
+	"quantity": 2,
+	"totalPrice": 23000.0,
+	"status": "PAGADA",
+	"createdAt": {
+		"$date": "2026-05-08T01:08:12.621Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "69fd420c96f1d699860b0750"
+	},
+	"productId": "69fd41e1f4fad8ced2ff33ba",
+	"productName": "Teclado Mecánico Hyper X",
+	"userEmail": "Rafa@modelo.com",
+	"quantity": 1,
+	"totalPrice": 3200.0,
+	"status": "PAGADA",
+	"createdAt": {
+		"$date": "2026-05-08T01:53:16.95Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "69fd431f96f1d699860b0751"
+	},
+	"productId": "69fd41e1f4fad8ced2ff33ba",
+	"productName": "Teclado Mecánico Hyper X",
+	"userEmail": "Luis@modelo.com",
+	"quantity": 1,
+	"totalPrice": 3200.0,
+	"status": "CANCELADA",
+	"createdAt": {
+		"$date": "2026-05-08T01:57:51.205Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "6a24bb1d2c600b0327dedb05"
+	},
+	"productId": "69fd41e1f4fad8ced2ff33ba",
+	"productName": "Teclado Mecánico Hyper X",
+	"userEmail": "TheBoss@modelo.com",
+	"quantity": 2,
+	"totalPrice": 6400.0,
+	"status": "PAGADA",
+	"createdAt": {
+		"$date": "2026-06-07T00:28:13.321Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "6a28c0728537da8aa3dfd0da"
+	},
+	"productId": "6a286daf183808bb0773363a",
+	"productName": "Control Gamesir 7",
+	"userEmail": "eduardo@gmail.com",
+	"quantity": 1,
+	"totalPrice": 799.0,
+	"status": "PAGADA",
+	"createdAt": {
+		"$date": "2026-06-10T01:40:02.234Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+},
+{
+	"_id": {
+		"$oid": "6a2901e900669002ba6f3a76"
+	},
+	"productId": "6a286daf183808bb0773363a",
+	"productName": "Control Gamesir 7",
+	"userEmail": "Rafa@gmail.com",
+	"quantity": 2,
+	"totalPrice": 1598.0,
+	"status": "PAGADA",
+	"createdAt": {
+		"$date": "2026-06-10T06:19:21.175Z"
+	},
+	"_class": "org.rvmiranda.ordenservice.infraestructure.repository.OrderEntity"
+}]
+
