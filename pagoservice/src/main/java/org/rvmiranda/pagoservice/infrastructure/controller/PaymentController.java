@@ -125,9 +125,9 @@ public class PaymentController {
 
     // GET /pagos/orden/{id}
     @GetMapping("/orden/{id}")
-    public ResponseEntity<GenericResponse<Payment>> getPaymentByOrderId(@PathVariable String id) {
+    public ResponseEntity<GenericResponse<List<Payment>>> getPaymentByOrderId(@PathVariable String id) {
         try {
-            return ResponseEntity.ok(GenericResponse.success(paymentService.getPaymentByOrderId(id), "Pago correspondiente a la orden"));
+            return ResponseEntity.ok(GenericResponse.success(paymentService.getPaymentsByOrderId(id), "Pagos correspondientes a la orden"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(GenericResponse.error(e.getMessage()));
         }

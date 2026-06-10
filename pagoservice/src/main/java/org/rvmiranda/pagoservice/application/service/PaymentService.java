@@ -107,9 +107,8 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Error: Pago no encontrado"));
     }
 
-    public Payment getPaymentByOrderId(String orderId) {
-        return paymentRepositoryPort.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("Error: No hay pago registrado para la orden " + orderId));
+    public List<Payment> getPaymentsByOrderId(String orderId) {
+        return paymentRepositoryPort.findAllByOrderId(orderId);
     }
 
     public Payment refundPayment(String id) {
