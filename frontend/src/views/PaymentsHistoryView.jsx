@@ -6,6 +6,10 @@ export default function PaymentsHistoryView({ showMsg }) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // Payment Search states
   const [searchPaymentId, setSearchPaymentId] = useState('');
   const [searchPaymentOrderId, setSearchPaymentOrderId] = useState('');
@@ -42,6 +46,7 @@ export default function PaymentsHistoryView({ showMsg }) {
     setLoading(true);
     setSearchPaymentsResultEmpty(false);
     setSearchPaymentsEmptyMessage('');
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/pagos/${searchPaymentId.trim()}`);
       const data = await res.json();
@@ -76,6 +81,7 @@ export default function PaymentsHistoryView({ showMsg }) {
     setLoading(true);
     setSearchPaymentsResultEmpty(false);
     setSearchPaymentsEmptyMessage('');
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/pagos/orden/${searchPaymentOrderId.trim()}`);
       const data = await res.json();
@@ -112,12 +118,14 @@ export default function PaymentsHistoryView({ showMsg }) {
     setSearchPaymentsActive(false);
     setSearchPaymentsResultEmpty(false);
     setSearchPaymentsEmptyMessage('');
+    setCurrentPage(1);
     fetchPayments();
   };
 
   const handleRefundPayment = async (id) => {
     if (!confirm('¿Estás seguro de solicitar el reembolso de este pago?')) return;
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/pagos/${id}/reembolso`, {
         method: 'PUT'
@@ -136,6 +144,12 @@ export default function PaymentsHistoryView({ showMsg }) {
       setLoading(false);
     }
   };
+
+  const sortedPayments = payments.slice().sort((a, b) => new Date(b.processedAt) - new Date(a.processedAt));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPayments = sortedPayments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedPayments.length / itemsPerPage);
 
   return (
     <div className="tab-content-wrapper fade-in">
@@ -246,14 +260,14 @@ export default function PaymentsHistoryView({ showMsg }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.length === 0 ? (
+                  {sortedPayments.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="empty-row">
                         {searchPaymentsResultEmpty ? searchPaymentsEmptyMessage : 'No hay pagos registrados.'}
                       </td>
                     </tr>
                   ) : (
-                    payments.map(p => (
+                    currentPayments.map(p => (
                       <tr 
                         key={p.id}
                         onClick={() => setSelectedPayment(p)}
@@ -278,6 +292,40 @@ export default function PaymentsHistoryView({ showMsg }) {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <span className="pagination-info">
+                  Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, sortedPayments.length)} de {sortedPayments.length} pagos
+                </span>
+                <div className="pagination-buttons">
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={currentPage === 1}
+                    className="btn-page"
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`btn-page ${currentPage === pageNumber ? 'active' : ''}`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                    disabled={currentPage === totalPages}
+                    className="btn-page"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       )}

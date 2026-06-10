@@ -19,6 +19,10 @@ export default function ProductsView({ showMsg }) {
   // Form states
   const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '' });
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // Load data
   useEffect(() => {
     fetchProducts();
@@ -45,6 +49,7 @@ export default function ProductsView({ showMsg }) {
     }
     setLoading(true);
     setSearchResultEmpty(false);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/productos/${searchId.trim()}`);
       const data = await res.json();
@@ -72,6 +77,7 @@ export default function ProductsView({ showMsg }) {
     setSearchId('');
     setSearchActive(false);
     setSearchResultEmpty(false);
+    setCurrentPage(1);
     fetchProducts();
   };
 
@@ -91,6 +97,7 @@ export default function ProductsView({ showMsg }) {
     }
 
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/productos`, {
         method: 'POST',
@@ -120,6 +127,7 @@ export default function ProductsView({ showMsg }) {
   const handleDeleteProduct = async (id, name) => {
     if (!confirm(`¿Estás seguro de eliminar el producto "${name}"?`)) return;
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/productos/${id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -178,6 +186,12 @@ export default function ProductsView({ showMsg }) {
       setLoading(false);
     }
   };
+
+  const sortedProducts = products.slice().sort((a, b) => b.id.localeCompare(a.id));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
   return (
     <div className="tab-content-wrapper fade-in">
@@ -391,14 +405,14 @@ export default function ProductsView({ showMsg }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.length === 0 ? (
+                  {sortedProducts.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="empty-row">
                         {searchResultEmpty ? 'Producto no encontrado.' : 'No hay productos registrados en el catálogo.'}
                       </td>
                     </tr>
                   ) : (
-                    products.map(p => (
+                    currentProducts.map(p => (
                       <tr 
                         key={p.id} 
                         onClick={() => {
@@ -418,8 +432,8 @@ export default function ProductsView({ showMsg }) {
                         <td>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProduct(p.id, p.name);
+                               e.stopPropagation();
+                               handleDeleteProduct(p.id, p.name);
                             }}
                             className="btn btn-danger btn-sm"
                             disabled={loading}
@@ -433,6 +447,40 @@ export default function ProductsView({ showMsg }) {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <span className="pagination-info">
+                  Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, sortedProducts.length)} de {sortedProducts.length} productos
+                </span>
+                <div className="pagination-buttons">
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={currentPage === 1}
+                    className="btn-page"
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`btn-page ${currentPage === pageNumber ? 'active' : ''}`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                    disabled={currentPage === totalPages}
+                    className="btn-page"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       )}

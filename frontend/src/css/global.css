@@ -457,3 +457,59 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
 }
 
+/* Pagination container and elements */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.btn-page {
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: rgba(9, 22, 32, 0.4);
+  color: var(--text-body);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.btn-page:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background-color: rgba(0, 152, 141, 0.05);
+}
+
+.btn-page.active {
+  background-color: var(--accent-color);
+  color: #0b1a24;
+  border-color: var(--accent-color);
+}
+
+.btn-page:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(44, 107, 116, 0.15);
+  color: var(--text-secondary);
+  background-color: transparent;
+}

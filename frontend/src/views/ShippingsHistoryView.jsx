@@ -6,6 +6,10 @@ export default function ShippingsHistoryView({ showMsg }) {
   const [shippings, setShippings] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // Search states
   const [searchShippingOrderId, setSearchShippingOrderId] = useState('');
   const [searchShippingEmail, setSearchShippingEmail] = useState('');
@@ -45,6 +49,7 @@ export default function ShippingsHistoryView({ showMsg }) {
     setLoading(true);
     setSearchShippingsResultEmpty(false);
     setSearchShippingsEmptyMessage('');
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/envios/orden/${searchShippingOrderId.trim()}`);
       const data = await res.json();
@@ -88,6 +93,7 @@ export default function ShippingsHistoryView({ showMsg }) {
     setLoading(true);
     setSearchShippingsResultEmpty(false);
     setSearchShippingsEmptyMessage('');
+    setCurrentPage(1);
     try {
       // 1. Get user orders
       const orderRes = await fetch(`${API_BASE}/ordenes/usuario/${searchShippingEmail.trim()}`);
@@ -137,8 +143,15 @@ export default function ShippingsHistoryView({ showMsg }) {
     setSearchShippingsActive(false);
     setSearchShippingsResultEmpty(false);
     setSearchShippingsEmptyMessage('');
+    setCurrentPage(1);
     fetchShippings();
   };
+
+  const sortedShippings = shippings.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentShippings = sortedShippings.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedShippings.length / itemsPerPage);
 
   return (
     <div className="tab-content-wrapper fade-in">
@@ -187,14 +200,14 @@ export default function ShippingsHistoryView({ showMsg }) {
                 </tr>
               </thead>
               <tbody>
-                {shippings.length === 0 ? (
+                {sortedShippings.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="empty-row">
                       {searchShippingsResultEmpty ? searchShippingsEmptyMessage : 'No hay envíos programados registrados.'}
                     </td>
                   </tr>
                 ) : (
-                  shippings.map(s => (
+                  currentShippings.map(s => (
                     <tr key={s.id}>
                       <td className="code-id">{s.id.substring(0, 8)}...</td>
                       <td className="code-id">{s.orderId.substring(0, 8)}...</td>
@@ -215,6 +228,40 @@ export default function ShippingsHistoryView({ showMsg }) {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="pagination-container">
+              <span className="pagination-info">
+                Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, sortedShippings.length)} de {sortedShippings.length} envíos
+              </span>
+              <div className="pagination-buttons">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                  disabled={currentPage === 1}
+                  className="btn-page"
+                >
+                  Anterior
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`btn-page ${currentPage === pageNumber ? 'active' : ''}`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                  disabled={currentPage === totalPages}
+                  className="btn-page"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </div>

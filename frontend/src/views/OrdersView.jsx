@@ -8,6 +8,10 @@ export default function OrdersView({ showMsg }) {
   const [orderBalances, setOrderBalances] = useState({}); // orderId -> balance
   const [loading, setLoading] = useState(false);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // Order Search states
   const [searchOrderId, setSearchOrderId] = useState('');
   const [searchOrderEmail, setSearchOrderEmail] = useState('');
@@ -87,6 +91,7 @@ export default function OrdersView({ showMsg }) {
     setLoading(true);
     setSearchOrdersResultEmpty(false);
     setSearchOrdersEmptyMessage('');
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/ordenes/${searchOrderId.trim()}`);
       const data = await res.json();
@@ -126,6 +131,7 @@ export default function OrdersView({ showMsg }) {
     setLoading(true);
     setSearchOrdersResultEmpty(false);
     setSearchOrdersEmptyMessage('');
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/ordenes/usuario/${searchOrderEmail.trim()}`);
       const data = await res.json();
@@ -164,6 +170,7 @@ export default function OrdersView({ showMsg }) {
     setSearchOrdersActive(false);
     setSearchOrdersResultEmpty(false);
     setSearchOrdersEmptyMessage('');
+    setCurrentPage(1);
     fetchOrders();
   };
 
@@ -186,6 +193,7 @@ export default function OrdersView({ showMsg }) {
     }
 
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/ordenes`, {
         method: 'POST',
@@ -215,6 +223,7 @@ export default function OrdersView({ showMsg }) {
   const handleUpdateOrderStatus = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/ordenes/${selectedOrder.id}/update-status?status=${newOrderStatus}`, {
         method: 'PUT'
@@ -248,6 +257,7 @@ export default function OrdersView({ showMsg }) {
     }
 
     setLoading(true);
+    setCurrentPage(1);
     try {
       const res = await fetch(`${API_BASE}/pagos/procesar`, {
         method: 'POST',
@@ -286,6 +296,12 @@ export default function OrdersView({ showMsg }) {
       setLoading(false);
     }
   };
+
+  const sortedOrders = orders.slice().sort((a, b) => b.id.localeCompare(a.id));
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentOrders = sortedOrders.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
 
   return (
     <div className="tab-content-wrapper fade-in">
@@ -507,14 +523,14 @@ export default function OrdersView({ showMsg }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.length === 0 ? (
+                  {sortedOrders.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="empty-row">
                         {searchOrdersResultEmpty ? searchOrdersEmptyMessage : 'No hay órdenes registradas.'}
                       </td>
                     </tr>
                   ) : (
-                    orders.map(o => {
+                    currentOrders.map(o => {
                       const balance = orderBalances[o.id];
                       return (
                         <tr 
@@ -544,6 +560,40 @@ export default function OrdersView({ showMsg }) {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <span className="pagination-info">
+                  Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, sortedOrders.length)} de {sortedOrders.length} órdenes
+                </span>
+                <div className="pagination-buttons">
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={currentPage === 1}
+                    className="btn-page"
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`btn-page ${currentPage === pageNumber ? 'active' : ''}`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                    disabled={currentPage === totalPages}
+                    className="btn-page"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       )}
