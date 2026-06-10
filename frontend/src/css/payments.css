@@ -1,0 +1,15 @@
+/* Payments History & Details View Styles */
+.payments-table-container {
+  width: 100%;
+}
+
+.payments-detail-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.refund-badge {
+  background-color: rgba(242, 62, 2, 0.15);
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}
